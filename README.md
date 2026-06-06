@@ -1,5 +1,7 @@
 # fMRIPrep Skills: Help Beginners Use fMRIPrep Easily
 
+Languages: English | [中文](README.zh.md)
+
 This project provides two skills: `$fmri-process` and `$fmri-followup`. The core goal is to help beginners who are processing a BIDS dataset for the first time avoid common mistakes and get a successful run with fewer retries.
 
 These skills implement a lightweight harness around auditing, runtime preparation, preprocessing execution, progress monitoring, trace logging, and failure follow-up. The agent handles the operational work and checks paths, data, images, TemplateFlow, licenses, storage, scheduler settings, and other risks before launching a long-running job.

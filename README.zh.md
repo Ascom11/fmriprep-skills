@@ -1,5 +1,7 @@
 # fMRIPrep Skills: Help Beginners Use fMRIPrep Easily
 
+语言：[English](README.md) | 中文
+
 本项目包含两个 skills：`$fmri-process`、`$fmri-followup`。核心目的：**让不懂代码、第一次处理 BIDS 数据集的初学者少踩坑，尽可能一次就跑通**。
 
 这组 skills 实现了轻量级的 harness，包括审查、准备环境、执行预处理、监测进度、记录 trace 文件、报错后的处理等等，把脏活累活都留给了 agent，在真正启动长任务前尽量提前发现路径、数据、镜像、TemplateFlow、license、存储和调度等各方面的风险，从而降低初学者第一次运行时的失败率。
