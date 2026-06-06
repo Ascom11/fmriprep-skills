@@ -1,0 +1,24 @@
+# Example only. Replace every <placeholder> before running.
+shared:
+  remote-host: <remote-host>
+  output-root: <output-root>
+  work-root: <work-root>
+  fs-license: <fs-license-file>
+  templateflow-home: <templateflow-home>
+  templateflow-tool-bins:
+    - <templateflow-tool-bin-dir>
+  container-runtime: singularity
+  executor-policy: slurm
+  nthreads-per-job: 8
+  omp-nthreads: 8
+
+fmriprep:
+  bids-root: <bids-root>
+  image: <fmriprep-image>
+  subjects:
+    - sub-001
+  output-spaces:
+    - MNI152NLin6Asym:res-2
+    - fsLR:den-32k
+  cifti-output: 91k
+  skip-bids-validation: true

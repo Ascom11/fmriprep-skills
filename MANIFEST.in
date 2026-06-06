@@ -1,0 +1,3 @@
+recursive-include src/fmri_core/resources *.json
+include config.fmriprep.example.yaml
+include config.xcpd.example.yaml

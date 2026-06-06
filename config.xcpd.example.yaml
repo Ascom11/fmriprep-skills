@@ -1,0 +1,24 @@
+# Example only. Replace every <placeholder> before running.
+shared:
+  remote-host: <remote-host>
+  output-root: <output-root>
+  work-root: <work-root>
+  fs-license: <fs-license-file>
+  templateflow-home: <templateflow-home>
+  templateflow-tool-bins:
+    - <templateflow-tool-bin-dir>
+  container-runtime: singularity
+  executor-policy: slurm
+  nthreads-per-job: 8
+  omp-nthreads: 8
+
+xcpd:
+  fmriprep-derivatives: <fmriprep-derivatives>
+  image: <xcpd-image>
+  subjects:
+    - sub-001
+  mode: nichart
+  min-time: 0
+  motion-filter-type: notch
+  band-stop-min: 12
+  band-stop-max: 20

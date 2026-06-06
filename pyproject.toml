@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fmri-proc-tools"
+version = "0.1.0"
+description = "Shared fMRI preprocessing implementation for agent skills"
+requires-python = ">=3.10"
+dependencies = [
+  "nibabel>=5.0",
+  "pybids>=0.22.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["fmri_core*", "fmri_process*"]
+
+[tool.setuptools.package-data]
+fmri_core = ["resources/*.json"]
