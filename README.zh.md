@@ -4,9 +4,17 @@
 
 本项目包含两个 skills：`$fmri-process`、`$fmri-followup`。核心目的：**让不懂代码、第一次处理 BIDS 数据集的初学者少踩坑，尽可能一次就跑通**。
 
-这组 skills 实现了轻量级的 harness，包括审查、准备环境、执行预处理、监测进度、记录 trace 文件、报错后的处理等等，把脏活累活都留给了 agent，在真正启动长任务前尽量提前发现路径、数据、镜像、TemplateFlow、license、存储和调度等各方面的风险，从而降低初学者第一次运行时的失败率。
+这组 skills 能做什么？你只需要用一句话告诉 agent 要处理哪个数据集。agent 会先看数据集是否完整，再结合你的电脑或服务器环境，判断应该下载哪个镜像文件、应该怎么拉取镜像、这个环境到底应该怎么跑，最后还可以继续帮你看每个被试跑到什么阶段。
 
-你不需要先懂代码，也不需要记住 fMRIPrep 的长命令。你可以用自然语言告诉 agent 要处理哪个数据集、哪些被试、输出放哪里、是否在远程服务器上跑。Agent 会先检查你的数据集和环境，如果有风险会停下来询问你，不会直接运行。
+你不需要先懂代码，也不需要记住 fMRIPrep 的长命令。更重要的是，你不需要自己琢磨这些风险：
+
+- 应该下载哪个镜像文件、镜像该怎么拉
+- derivatives 和 work 文件会不会撑爆磁盘
+- 这么跑会不会跑崩
+
+这些风险 agent 会在最开始的审查里告诉你，并在真正运行前停下来等你确认。
+
+这组 skills 实现了轻量级的 harness，包括审查、准备环境、执行预处理、监测进度、记录 trace 文件、报错后的处理等等，把脏活累活都留给了 agent，在真正启动长任务前尽量提前发现路径、数据、镜像、TemplateFlow、license、存储和调度等各方面的风险，从而降低初学者第一次运行时的失败率。
 
 适配各种 agent，包括 Codex、Claude、DeepSeek、MiMo等等。
 
@@ -54,7 +62,7 @@ $fmri-followup 监测进度、日志、崩溃记录和输出完整性
 ### 安装依赖
 
 ```bash
-git clone https://github.com/AsCome11/fmriprep-skills.git
+git clone https://github.com/Ascom11/fmriprep-skills.git
 cd fmriprep-skills
 python -m pip install -e .
 python -m pip show fmri-proc-tools
