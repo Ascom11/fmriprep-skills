@@ -2,9 +2,9 @@
 
 Languages: English | [中文](README.zh.md)
 
-This project provides two skills: `$fmri-process` and `$fmri-followup`. The core goal is to help beginners who are processing a BIDS dataset for the first time avoid common mistakes and get a successful run with fewer retries.
+This project provides two skills: `$fmri-process` and `$fmri-followup`. The core goal is **to help beginners who are processing a BIDS dataset for the first time avoid common mistakes and get a successful run with fewer retries**.
 
-What can these skills do? Tell the agent, in one sentence, which dataset to process. The agent checks whether the dataset is complete, looks at your local computer or server environment, decides which image file to download and how to pull it, chooses a run strategy for that environment, and can later tell you which stage each subject has reached.
+What can these skills do? **Tell the agent, in one sentence**, which dataset to process. The agent checks whether the dataset is complete, looks at your local computer or server environment, decides which image file to download and how to pull it, chooses a run strategy for that environment, and can later tell you which stage each subject has reached.
 
 You do not need to understand the code or memorize long fMRIPrep commands. More importantly, you do not need to work through these decisions and risks yourself:
 
@@ -14,7 +14,7 @@ You do not need to understand the code or memorize long fMRIPrep commands. More 
 
 The agent surfaces these risks during the first audit and pauses before the real run.
 
-These skills implement a lightweight harness around auditing, runtime preparation, preprocessing execution, progress monitoring, trace logging, and failure follow-up. The agent handles the operational work and checks paths, data, images, TemplateFlow, licenses, storage, scheduler settings, and other risks before launching a long-running job.
+These skills implement a **lightweight harness** around auditing, runtime preparation, preprocessing execution, progress monitoring, trace logging, and failure follow-up. The agent handles the operational work and checks paths, data, images, TemplateFlow, licenses, storage, scheduler settings, and other risks before launching a long-running job.
 
 The skills are designed for agent environments such as Codex, Claude, DeepSeek, MiMo, and similar tools.
 
