@@ -459,8 +459,60 @@ def _verify_local_pool_manager_launch(
     process: subprocess.Popen[str],
     *,
     startup_check_seconds: float | None = None,
+    pid_manifest: Path | None = None,
+    expected_start_count: int | None = None,
 ) -> dict[str, Any]:
     check_seconds = STARTUP_CHECK_SECONDS if startup_check_seconds is None else startup_check_seconds
+    if pid_manifest is not None and expected_start_count is not None:
+        started = time.monotonic()
+        expected = max(1, expected_start_count)
+        checks: list[dict[str, Any]] = []
+        while True:
+            elapsed = max(0.0, time.monotonic() - started)
+            pid_by_subject = _parse_remote_local_pids(_read_text_if_exists(pid_manifest, remote_host=None))
+            manifest_check = {
+                "kind": "local-worker-pool-pid-manifest",
+                "path": str(pid_manifest),
+                "elapsed_seconds": elapsed,
+                "recorded": len(pid_by_subject),
+                "expected": expected,
+                "returncode": 0 if len(pid_by_subject) >= expected else 1,
+            }
+            checks.append(manifest_check)
+            if len(pid_by_subject) >= expected:
+                return {
+                    "status": "launched",
+                    "returncode": None,
+                    "startup_check": _startup_check("passed", checks=checks, duration_seconds=elapsed),
+                }
+            poll = getattr(process, "poll", None)
+            if callable(poll):
+                returncode = poll()
+                if returncode is not None:
+                    return {
+                        "status": "failed",
+                        "returncode": returncode,
+                        "startup_check": _startup_check("failed", checks=checks, duration_seconds=elapsed),
+                    }
+            if elapsed >= check_seconds:
+                wait = getattr(process, "wait", None)
+                if callable(wait) and not callable(getattr(process, "poll", None)):
+                    try:
+                        wait(timeout=0)
+                    except subprocess.TimeoutExpired:
+                        pass
+                    else:
+                        return {
+                            "status": "failed",
+                            "returncode": getattr(process, "returncode", None),
+                            "startup_check": _startup_check("failed", checks=checks, duration_seconds=elapsed),
+                        }
+                return {
+                    "status": "submitted",
+                    "returncode": None,
+                    "startup_check": _startup_check("not_confirmed", checks=checks, duration_seconds=elapsed),
+                }
+            _sleep_for_startup_check(elapsed, startup_check_seconds=check_seconds)
     wait = getattr(process, "wait", None)
     if callable(wait):
         try:
@@ -558,6 +610,8 @@ def _launch_local_subjects_with_pool(
     launch = _verify_local_pool_manager_launch(
         process,
         startup_check_seconds=_startup_check_seconds_for_target(request.target),
+        pid_manifest=pid_manifest,
+        expected_start_count=min(max_concurrency, len(subject_plans)),
     )
     pid_by_subject = (
         _parse_remote_local_pids(_read_text_if_exists(pid_manifest, remote_host=None))
