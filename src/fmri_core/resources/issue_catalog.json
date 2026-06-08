@@ -115,8 +115,8 @@
       "scope": "shared",
       "category": "warning",
       "severity": 3,
-      "meaning": "The explicit local or remote-local resource plan requests more concurrent CPU work than the detected host capacity.",
-      "advice": "The requested resource values were preserved; reduce subject concurrency or per-job threads if the host cannot sustain the load.",
+      "meaning": "The explicit local or remote-local resource plan requests more concurrent CPU work than the detected host capacity or recommended headroom.",
+      "advice": "The requested resource values were preserved; reduce subject concurrency or per-job threads if the host cannot sustain the load or needs CPU headroom.",
       "missing_required": null,
       "reportable": true,
       "legacy": false

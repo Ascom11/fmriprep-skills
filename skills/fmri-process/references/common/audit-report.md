@@ -93,7 +93,9 @@ Required report shape:
 2. Data readiness: summarize selected data, runnable data, and excluded subjects or sessions.
 3. Runtime readiness: name only the runtime, execution method, concurrency from
    the resource summary, image, and TemplateFlow facts that affect the current
-   decision. Do not expose proof ids as section headings.
+   decision. For local or remote-local `worker_pool`, write the resource
+   comparison in plain words: how many subjects can run at the same time, how many CPU threads each subject uses, how many CPUs the current environment has, and that 1-2 CPUs should remain free for the system and Docker or the run may be unsafe. Do not use "local worker pool is detected/selected" as the main user-facing sentence.
+   Do not expose proof ids as section headings.
 4. Important paths: list only paths that affect the current decision, such as output, work, image, license, TemplateFlow, or logs.
 5. Storage check: Use `storage_check.comparison_text` when it is present for either local audits or successful remote storage probes; it already merges work and derivatives on shared volumes and separates them on split volumes. For WSL native output/work roots, this comparison uses the Windows host drive that stores the WSL VHDX when that drive can be resolved. When `comparison_text` is absent, read the stored estimate values for final derivatives, work minimum, work peak, and total peak increment, then label them plainly as estimated derivatives/work/total storage. State that free-space comparison is unavailable for this audit. Do not print the JSON field paths in the user report.
 6. Must fix before starting: list hard stops in plain language with concrete repair advice.
@@ -176,6 +178,8 @@ Current conclusion: The review is complete; preprocessing remains paused.
 Data readiness: 8 subjects were selected; 7 are runnable, and `sub-003` is excluded.
 
 Runtime readiness: Remote Slurm and Apptainer are selected. The fMRIPrep image still needs preparation. TemplateFlow is present but not fully proven.
+
+Runtime readiness for local run: Docker is selected. This run is configured for 5 subjects at the same time, with 4 CPU threads per subject. The current environment has 20 detected CPUs; keep at least 1-2 CPUs free for the system and Docker, otherwise the run may slow down or fail.
 
 Important paths:
 out: `/path/to/bids/derivatives/fmriprep`

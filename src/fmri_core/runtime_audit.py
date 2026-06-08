@@ -1580,7 +1580,11 @@ def _resolve_resource_plan(
     max_jobs = _positive_resource_value(requested_max_jobs, "max_jobs") or default_max_jobs
     warnings: list[str] = []
     if execution_strategy != "slurm":
-        if max_jobs * nthreads_per_job > cpu_total:
+        requested_cpu_parallelism = requested_threads is not None or requested_max_jobs is not None
+        cpu_warning_limit = cpu_total
+        if requested_cpu_parallelism:
+            cpu_warning_limit = max(1, cpu_total - (2 if cpu_total >= 8 else 1))
+        if max_jobs * nthreads_per_job > cpu_warning_limit:
             warnings.append("resource_plan_cpu_overcommit")
         if slurm_mem_gb is not None and memory_gb is not None and max_jobs * slurm_mem_gb > memory_gb:
             warnings.append("resource_plan_memory_overcommit")

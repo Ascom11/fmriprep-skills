@@ -1145,6 +1145,38 @@ def runtime_stage_summary(artifact: dict[str, Any]) -> dict[str, Any]:
     summary["status"] = artifact_status(artifact)
     return summary
 
+
+def cpu_parallelism_summary(resources: dict[str, Any], execution_strategy: str | None) -> dict[str, Any] | None:
+    if execution_strategy != "worker_pool":
+        return None
+    existing = resources.get("cpu_parallelism")
+    if isinstance(existing, dict):
+        return dict(existing)
+    max_jobs = _positive_int(resources.get("max_jobs"))
+    nthreads_per_job = _positive_int(resources.get("nthreads_per_job"))
+    cpu_total = _positive_int(resources.get("cpu_total"))
+    if max_jobs is None or nthreads_per_job is None or cpu_total is None:
+        return None
+    requested = max_jobs * nthreads_per_job
+    recommended_limit = max(1, cpu_total - (2 if cpu_total >= 8 else 1))
+    return {
+        "requested": requested,
+        "available": cpu_total,
+        "recommended_limit": recommended_limit,
+        "expression": f"{max_jobs} max_jobs * {nthreads_per_job} nthreads_per_job = {requested}",
+    }
+
+
+def _positive_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
 def execute_from_artifacts(
     request: RequestConfig,
     *,
@@ -1335,19 +1367,24 @@ def execute_from_artifacts(
 def runtime_audit_summary(runtime_audit: dict[str, Any]) -> dict[str, Any]:
     context = runtime_audit.get("runtime_context") if isinstance(runtime_audit.get("runtime_context"), dict) else {}
     resources = runtime_audit.get("resources") or runtime_audit.get("resource_summary") or {}
+    execution_strategy = runtime_audit.get("execution_strategy", context.get("execution_strategy"))
+    resource_summary = {
+        "max_jobs": resources.get("max_jobs"),
+        "nthreads_per_job": resources.get("nthreads_per_job"),
+        "omp_nthreads": resources.get("omp_nthreads"),
+    }
+    cpu_parallelism = cpu_parallelism_summary(resources, execution_strategy)
+    if cpu_parallelism is not None:
+        resource_summary["cpu_parallelism"] = cpu_parallelism
     summary = {
         "selected_runtime": runtime_audit.get("selected_runtime", context.get("container_runtime")),
         "selected_executor_policy": runtime_audit.get("selected_executor_policy", context.get("executor_policy")),
-        "execution_strategy": runtime_audit.get("execution_strategy", context.get("execution_strategy")),
+        "execution_strategy": execution_strategy,
         "slurm_available": runtime_audit.get("slurm_available"),
         "in_slurm_allocation": runtime_audit.get("in_slurm_allocation"),
         "local_execution_allowed": runtime_audit.get("local_execution_allowed"),
         "slurm_job_id": runtime_audit.get("slurm_job_id"),
-        "resources": {
-            "max_jobs": resources.get("max_jobs"),
-            "nthreads_per_job": resources.get("nthreads_per_job"),
-            "omp_nthreads": resources.get("omp_nthreads"),
-        },
+        "resources": resource_summary,
         "warning_count": len(runtime_audit.get("warnings", [])),
         "prepare_required_count": len(runtime_audit.get("prepare_required", [])),
         "blocker_count": len(runtime_audit.get("blockers", [])),

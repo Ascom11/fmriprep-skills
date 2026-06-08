@@ -1684,6 +1684,18 @@ def _runtime_artifact_payload(
         prepare_required_details = list(runtime_audit.get("prepare_required_details") or [])
         blocker_details = list(runtime_audit.get("blocker_details") or [])
     resource_summary = dict(runtime_audit.get("resources") or {})
+    resource_summary_payload = {
+        "max_jobs": resource_summary.get("max_jobs"),
+        "nthreads_per_job": resource_summary.get("nthreads_per_job"),
+        "omp_nthreads": resource_summary.get("omp_nthreads"),
+        "slurm_mem_gb": resource_summary.get("slurm_mem_gb"),
+    }
+    cpu_parallelism = execution_flow.cpu_parallelism_summary(
+        resource_summary,
+        runtime_audit.get("execution_strategy"),
+    )
+    if cpu_parallelism is not None:
+        resource_summary_payload["cpu_parallelism"] = cpu_parallelism
     payload = {
         "runtime_context": {
             "target": request.target,
@@ -1695,12 +1707,7 @@ def _runtime_artifact_payload(
         "required_proofs": list(proof_refs),
         "proof_refs": proof_refs,
         "readiness": readiness,
-        "resource_summary": {
-            "max_jobs": resource_summary.get("max_jobs"),
-            "nthreads_per_job": resource_summary.get("nthreads_per_job"),
-            "omp_nthreads": resource_summary.get("omp_nthreads"),
-            "slurm_mem_gb": resource_summary.get("slurm_mem_gb"),
-        },
+        "resource_summary": resource_summary_payload,
         "required_templateflow_templates": list(runtime_audit.get("required_templateflow_templates") or []),
         "warnings": warnings,
         "prepare_required": prepare_required,
