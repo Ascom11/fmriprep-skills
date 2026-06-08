@@ -82,8 +82,8 @@ def required_templateflow_templates(request: RequestConfig) -> list[str]:
     return _dedupe(templates)
 
 
-def _templateflow_tool_path_prefix(tool_bins: list[str] | tuple[str, ...]) -> str:
-    return ":".join(str(value).strip() for value in tool_bins if str(value).strip())
+def _templateflow_tool_path_prefix(tool_bins: list[str] | tuple[str, ...], *, separator: str = os.pathsep) -> str:
+    return separator.join(str(value).strip() for value in tool_bins if str(value).strip())
 
 
 def _templateflow_toolchain(
@@ -100,20 +100,27 @@ def _templateflow_toolchain(
             "path_prefix": None,
             "manual_command_prefix": None,
         }
-    prefix = _templateflow_tool_path_prefix(tool_bins)
+    path_separator = ":" if request.remote_host else os.pathsep
+    prefix = _templateflow_tool_path_prefix(tool_bins, separator=path_separator)
     if prefix:
         return {
             "source": "explicit_tool_bin",
             "tool_bins": tool_bins,
-            "path_prefix": f"{prefix}:$PATH",
-            "manual_command_prefix": f"PATH={prefix}:$PATH",
+            "path_prefix": path_separator.join([prefix, "$PATH"]),
+            "manual_command_prefix": _templateflow_manual_command_prefix(prefix, separator=path_separator),
         }
     return {
-        "source": "missing_tool_bin",
+        "source": "default_path",
         "tool_bins": [],
-        "path_prefix": None,
-        "manual_command_prefix": None,
+        "path_prefix": "$PATH",
+        "manual_command_prefix": "",
     }
+
+
+def _templateflow_manual_command_prefix(prefix: str, *, separator: str) -> str:
+    if separator == ";":
+        return f'$env:PATH="{separator.join([prefix, "$env:PATH"])}"'
+    return f"PATH={separator.join([prefix, '$PATH'])}"
 
 
 def _templateflow_effective_local_path(request: RequestConfig) -> str | None:
@@ -125,9 +132,12 @@ def _templateflow_effective_local_path(request: RequestConfig) -> str | None:
 
 
 def _templateflow_tool_env(request: RequestConfig) -> dict[str, str] | None:
-    prefix = _templateflow_tool_path_prefix(request.templateflow_tool_bins)
+    prefix = _templateflow_tool_path_prefix(
+        request.templateflow_tool_bins,
+        separator=":" if request.remote_host else os.pathsep,
+    )
     if not prefix:
-        return {"PATH": ""}
+        return None
     if request.remote_host:
         return {"PATH": f"{prefix}:$PATH"}
     env = dict(os.environ)
@@ -137,7 +147,7 @@ def _templateflow_tool_env(request: RequestConfig) -> dict[str, str] | None:
 
 
 def remote_templateflow_tool_path_line(request: RequestConfig) -> str:
-    prefix = _templateflow_tool_path_prefix(request.templateflow_tool_bins)
+    prefix = _templateflow_tool_path_prefix(request.templateflow_tool_bins, separator=":")
     if not prefix:
         return "PATH=; export PATH"
     return f"PATH={shlex.quote(prefix)}:$PATH; export PATH"
@@ -454,8 +464,6 @@ def _local_templateflow_annex_probe(
 ) -> dict[str, Any]:
     if not _looks_like_datalad_dataset(templateflow_home):
         return {"status": "skipped"}
-    if request is None or not request.templateflow_tool_bins:
-        return {"status": "failed", "error": "templateflow tool bin missing"}
     for template in required_templates:
         template_dir = templateflow_home / f"tpl-{template}"
         if not template_dir.is_dir():

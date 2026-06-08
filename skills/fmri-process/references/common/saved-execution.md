@@ -6,6 +6,19 @@ Read this from saved execution route files after selecting `run-fmriprep` or
 This file is the shared retry, failure handoff, artifact-stability, and
 `run-id` reference. Pipeline files keep their saved selector and artifact names.
 
+## Failure Handoff
+
+After `run-fmriprep` or `run-xcpd` returns `failed`, report the failure payload
+first. Do bounded stderr triage from payload-provided stderr/log paths. If
+stderr suggests dataset/runtime drift, read-only TemplateFlow, no network, or
+missing runtime assets, say re-audit should happen before recovery or rerun.
+Route deeper log, crash, output, or status investigation to `$fmri-followup`
+first.
+
+Do not start re-audit, prepare, rerun, manual probes, or a manual container
+command from `$fmri-process` unless this file's retry policy allows the action
+and the user explicitly approves it.
+
 ## Retry Policy
 
 If saved execution fails after launch or submission attempt, retry only the same
@@ -18,12 +31,17 @@ or current-turn runtime values. `--run-id` may change only to separate logs.
 `--run-id` must not participate in artifact selection.
 
 After the second failed retry, stop and report the final failure payload plus a
-short summary of the first two attempts. If bounded stderr suggests
-dataset/runtime drift, read-only TemplateFlow, no network, or missing runtime
-assets, recommend re-audit before recovery or rerun. Then route follow-up
-investigation to `$fmri-followup`. Do not re-audit, prepare, rerun, or start
-manual probes from `$fmri-process` unless the user explicitly requests recovery
-based on new evidence.
+short summary of the first two attempts. First use `$fmri-followup` evidence and
+payload-provided stderr/log paths to summarize the likely cause. If bounded
+stderr suggests dataset/runtime drift, read-only TemplateFlow, no network, or
+missing runtime assets, recommend re-audit before recovery or rerun.
+
+Only after the initial attempt plus two failed retries may you ask whether the
+user wants to bypass the `run-fmriprep` / `run-xcpd` interface and manually run
+the exact single-subject container command returned by the execution payload.
+This manual container fallback requires explicit user approval and must not be
+used before both retries have failed. Do not start the manual container command
+automatically.
 
 ## Artifact Stability
 

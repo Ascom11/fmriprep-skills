@@ -39,7 +39,7 @@ saved artifact selection, or execution.
 | XCP-D runtime needs prepare | Report the listed requirement and request current-turn prepare approval; do not implicitly audit -> prepare -> run. |
 | Saved XCP-D artifacts are ready | Report ready; run only with current-turn execution approval. |
 | Saved XCP-D artifacts are missing, stale, or mismatched | Rerun `xcpd-audit`. |
-| XCP-D run failed | Apply the [run-xcpd.md](run-xcpd.md) retry policy first when retry attempts remain. After retries are exhausted, report the failure payload first, do bounded stderr triage, and if stderr suggests dataset/runtime drift, read-only TemplateFlow, no network, or missing runtime assets, recommend re-audit before recovery or rerun. Route deeper log, crash, output, or status investigation to `$fmri-followup` first. Do not start re-audit, prepare, rerun, or manual probes from `$fmri-process` unless the user explicitly asks for recovery. |
+| XCP-D run failed | Use [../common/saved-execution.md](../common/saved-execution.md) for failure handoff, retry, and manual container fallback. Do not duplicate those shared rules here. |
 | XCP-D launched or submitted | Report launch result; use `$fmri-followup` only for explicit inspection. |
 
 ## Boundaries

@@ -38,10 +38,11 @@ materialization. TemplateFlow pulls can be very slow on exFAT because DataLad
 and git-annex create many small files and links. In that warning, prefer native
 Linux storage or another filesystem with reliable symbolic links.
 
-## Default Shell Commands
+## Default POSIX Shell Commands
 
-Use these only when the latest check shows the default shell commands are
-healthy:
+Use these only on POSIX shells when the latest check shows the default shell
+commands are healthy. Do not copy these bash forms directly into native Windows
+PowerShell or CMD.
 
 ```bash
 timeout 60 datalad --version
@@ -60,11 +61,12 @@ template at most twice. If it still fails after two retries, stop and report
 stderr or log evidence. Do not replace the failed command with broad `find`,
 broad `rg`, or manual directory sweeps.
 
-## Explicit Bin Directory Commands
+## Explicit Bin Directory POSIX Commands
 
-Use these when the latest check reports
+Use these on POSIX shells when the latest check reports
 `toolchain.source == "explicit_tool_bin"` or the user supplies a TemplateFlow
-bin directory:
+bin directory. Do not copy `PATH="${bin_dir}:$PATH"` or
+`cd "${templateflow_home}" && ...` into native Windows PowerShell or CMD.
 
 ```bash
 PATH="${bin_dir}:$PATH" timeout 60 datalad --version
@@ -80,6 +82,40 @@ the saved runtime audit values. Use the same selected bin directory for the
 matching follow-up runtime audit. Do not mix default-shell audit evidence with
 explicit-bin manual commands unless the follow-up audit uses the same explicit
 bin.
+
+## Native Windows Command Shape
+
+Use native Windows command syntax only when the selected target is native
+Windows and the latest check proves the Windows commands are healthy.
+
+PowerShell examples:
+
+```powershell
+$env:PATH = "${bin_dir};$env:PATH"
+Start-Job { datalad --version } | Wait-Job -Timeout 60 | Receive-Job
+Start-Job { git --version } | Wait-Job -Timeout 10 | Receive-Job
+Start-Job { git annex version } | Wait-Job -Timeout 60 | Receive-Job
+datalad install -s ///templateflow "${templateflow_home}"
+Push-Location "${templateflow_home}"; datalad get -J8 "tpl-${template_name}"; Pop-Location
+Push-Location "${templateflow_home}"; git annex get -J8 "tpl-${template_name}"; Pop-Location
+```
+
+CMD examples:
+
+```cmd
+set "PATH=${bin_dir};%PATH%"
+datalad --version
+git --version
+git annex version
+datalad install -s ///templateflow "${templateflow_home}"
+pushd "${templateflow_home}" && datalad get -J8 "tpl-${template_name}" & popd
+pushd "${templateflow_home}" && git annex get -J8 "tpl-${template_name}" & popd
+```
+
+Native Windows `cmd.exe` lacks a built-in timeout wrapper equivalent to POSIX
+`timeout 60 <command>` for foreground commands. If bounded execution is needed,
+prefer PowerShell `Start-Job ... Wait-Job -Timeout ...` or run the CLI from WSL
+with POSIX paths.
 
 ## Unverified Warning
 

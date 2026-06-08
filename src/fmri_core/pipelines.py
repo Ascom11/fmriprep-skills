@@ -640,7 +640,7 @@ def build_container_command(
         cmd.extend(spec.extra_args)
         for bind in binds:
             cmd.extend(["--mount", _render_docker_mount(bind)])
-        cmd.append(spec.image)
+        cmd.append(spec.image.removeprefix("docker://"))
         cmd.extend(container_args)
         return cmd
     raise ValueError(f"Unsupported container engine: {spec.engine}")

@@ -83,37 +83,9 @@ Failure summaries are intentionally bounded:
 - Do not hard-code launcher log filenames, PID manifest filenames, or PID
   manifest columns in the skill contract
 
-After `run-fmriprep` returns `failed`:
-
-- Report the failure payload first.
-- Do bounded stderr triage from payload-provided stderr/log paths.
-- If stderr suggests dataset/runtime drift, read-only TemplateFlow, no network,
-  or missing runtime assets, say re-audit should happen before recovery or
-  rerun.
-- Route deeper log, crash, output, or status investigation to
-  `$fmri-followup` first.
-- Do not start re-audit, prepare, rerun, or manual probes from `$fmri-process`
-  unless the user explicitly asks for recovery.
-
-## Run Retry Policy
-
-`run-fmriprep --resume-from <snapshot>` may retry the same saved snapshot in
-the same user request only after an initial run failure. It allows a maximum of
-two retries after the initial failure. Total attempts are capped at three: one
-initial attempt plus two retries.
-
-Every retry must reuse the same `--resume-from <snapshot>` value and must not
-change dataset artifacts, runtime artifacts, prepare inputs, or resource
-overrides. `--run-id` may change only to separate logs. `--run-id` must not
-participate in artifact selection.
-
-After the second failed retry, stop and report the final failure payload plus a
-short summary of the first two attempts. If bounded stderr suggests
-dataset/runtime drift, read-only TemplateFlow, no network, or missing runtime
-assets, recommend re-audit before recovery or rerun. Then route follow-up
-investigation to `$fmri-followup`. Do not re-audit, prepare, rerun, or start
-manual probes from `$fmri-process` unless the user explicitly requests recovery
-based on new evidence.
+For `run-fmriprep` failure handoff, retry, and manual container fallback, use
+[../common/saved-execution.md](../common/saved-execution.md). Do not duplicate
+those shared rules here.
 
 ## Gate Semantics
 

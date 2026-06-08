@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ctypes
 import json
 import os
 import signal
@@ -45,6 +46,13 @@ PRE_STEP_PROGRESS_INTERVAL_SECONDS = 30.0
 PRE_STEP_TIMEOUT_RETURNCODE = 124
 PRE_STEP_TAIL_LINES = 80
 PRE_STEP_TAIL_MAX_CHARS = 8192
+
+
+def _local_detached_popen_kwargs() -> dict[str, Any]:
+    if sys.platform == "win32":
+        flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        return {"creationflags": flags} if flags else {}
+    return {"start_new_session": True}
 
 
 def execute_plan(
@@ -605,7 +613,7 @@ def _launch_local_subjects_with_pool(
             [sys.executable, "-c", _local_pool_manager_script(), str(pool_path)],
             stdout=stdout_handle,
             stderr=stderr_handle,
-            start_new_session=True,
+            **_local_detached_popen_kwargs(),
         )
     launch = _verify_local_pool_manager_launch(
         process,
@@ -899,11 +907,29 @@ def _local_pool_subject_launch(child_pid: int | None, *, manager_launch: dict[st
 
 
 def _local_pid_running(pid: int) -> bool:
+    if sys.platform == "win32":
+        return _windows_pid_running(pid)
     try:
         os.kill(pid, 0)
-    except OSError:
+    except (OSError, SystemError):
         return False
     return True
+
+
+def _windows_pid_running(pid: int) -> bool:
+    process_query_limited_information = 0x1000
+    still_active = 259
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    handle = kernel32.OpenProcess(process_query_limited_information, False, int(pid))
+    if not handle:
+        return False
+    exit_code = ctypes.c_ulong()
+    try:
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return False
+        return exit_code.value == still_active
+    finally:
+        kernel32.CloseHandle(handle)
 
 
 def _launcher_log_paths(launcher_dir: Path, prefix: str) -> tuple[Path, Path]:
@@ -1104,6 +1130,12 @@ def _local_subject_runner_script() -> str:
         import sys
         from pathlib import Path
 
+        def detached_popen_kwargs():
+            if sys.platform == "win32":
+                flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                return {"creationflags": flags} if flags else {}
+            return {"start_new_session": True}
+
         def ensure_step_dirs(step):
             Path(step["work_dir"]).mkdir(parents=True, exist_ok=True)
             Path(step["output_dir"]).mkdir(parents=True, exist_ok=True)
@@ -1131,14 +1163,15 @@ def _local_subject_runner_script() -> str:
                     "w",
                     encoding="utf-8",
                 ) as stderr_handle:
-                    result = subprocess.run(
+                    process = subprocess.Popen(
                         step["command"],
                         stdout=stdout_handle,
                         stderr=stderr_handle,
-                        check=False,
+                        **detached_popen_kwargs(),
                     )
-                if result.returncode != 0:
-                    return result.returncode
+                returncode = process.wait()
+                if returncode != 0:
+                    return returncode
             return 0
 
         if __name__ == "__main__":
@@ -1159,6 +1192,12 @@ def _local_pool_manager_script() -> str:
 
         SUBJECT_RUNNER = {subject_runner!r}
 
+        def detached_popen_kwargs():
+            if sys.platform == "win32":
+                flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                return {{"creationflags": flags}} if flags else {{}}
+            return {{"start_new_session": True}}
+
         def launch_subject(entry):
             stdout_path = Path(entry["launcher_stdout"])
             stderr_path = Path(entry["launcher_stderr"])
@@ -1170,7 +1209,7 @@ def _local_pool_manager_script() -> str:
                 [sys.executable, "-c", SUBJECT_RUNNER, entry["subject_path"]],
                 stdout=stdout_handle,
                 stderr=stderr_handle,
-                start_new_session=True,
+                **detached_popen_kwargs(),
             )
             return process, stdout_handle, stderr_handle
 

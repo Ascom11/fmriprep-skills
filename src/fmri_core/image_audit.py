@@ -45,7 +45,7 @@ def resolve_images(
                 images[pipeline] = str(persisted_image)
     if selected_runtime == "docker":
         for pipeline, image in list(images.items()):
-            if image and _pipeline_image_omitted(request, pipeline):
+            if image and (image.startswith("docker://") or _pipeline_image_omitted(request, pipeline)):
                 images[pipeline] = _docker_registry_image(image)
     return images
 
