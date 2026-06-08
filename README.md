@@ -73,20 +73,40 @@ python -m pip show fmri-proc-tools
 
 ### Copy Skills
 
-Codex:
+Run these commands from the `fmriprep-skills` repository root. Re-run them
+after updating this repository; existing skill files with the same names are
+overwritten.
+
+Linux, macOS, WSL, or remote shell for Codex:
 
 ```bash
-mkdir -p ~/.codex/skills
-cp -a skills/fmri-process ~/.codex/skills/
-cp -a skills/fmri-followup ~/.codex/skills/
+mkdir -p ~/.codex/skills/fmri-process ~/.codex/skills/fmri-followup
+cp -a skills/fmri-process/. ~/.codex/skills/fmri-process/
+cp -a skills/fmri-followup/. ~/.codex/skills/fmri-followup/
 ```
 
-Claude or other Claude Code based agents:
+Linux, macOS, WSL, or remote shell for Claude or other Claude Code based agents:
 
 ```bash
-mkdir -p ~/.claude/skills
-cp -a skills/fmri-process ~/.claude/skills/
-cp -a skills/fmri-followup ~/.claude/skills/
+mkdir -p ~/.claude/skills/fmri-process ~/.claude/skills/fmri-followup
+cp -a skills/fmri-process/. ~/.claude/skills/fmri-process/
+cp -a skills/fmri-followup/. ~/.claude/skills/fmri-followup/
+```
+
+Windows PowerShell for Codex:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\skills\fmri-process", "$env:USERPROFILE\.codex\skills\fmri-followup" | Out-Null
+Copy-Item -Recurse -Force .\skills\fmri-process\* "$env:USERPROFILE\.codex\skills\fmri-process\"
+Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.codex\skills\fmri-followup\"
+```
+
+Windows PowerShell for Claude or other Claude Code based agents:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills\fmri-process", "$env:USERPROFILE\.claude\skills\fmri-followup" | Out-Null
+Copy-Item -Recurse -Force .\skills\fmri-process\* "$env:USERPROFILE\.claude\skills\fmri-process\"
+Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.claude\skills\fmri-followup\"
 ```
 
 Other runtime prerequisites:

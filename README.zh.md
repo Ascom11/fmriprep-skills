@@ -73,19 +73,39 @@ python -m pip show fmri-proc-tools
 
 ### 复制 skills
 
-Codex：
+在 `fmriprep-skills` 仓库根目录运行下面的命令。以后更新仓库后可以重新执行；
+目标 skill 目录里的同名文件会被新版覆盖。
+
+Linux、macOS、WSL 或远程 shell 上的 Codex：
 
 ```bash
-mkdir -p ~/.codex/skills
-cp -a skills/fmri-process ~/.codex/skills/
-cp -a skills/fmri-followup ~/.codex/skills/
+mkdir -p ~/.codex/skills/fmri-process ~/.codex/skills/fmri-followup
+cp -a skills/fmri-process/. ~/.codex/skills/fmri-process/
+cp -a skills/fmri-followup/. ~/.codex/skills/fmri-followup/
 ```
 
-Claude 或者其他基于 Claude Code 的 agents：
+Linux、macOS、WSL 或远程 shell 上的 Claude 或其他基于 Claude Code 的 agents：
+
 ```bash
-mkdir -p ~/.claude/skills
-cp -a skills/fmri-process ~/.claude/skills/
-cp -a skills/fmri-followup ~/.claude/skills/
+mkdir -p ~/.claude/skills/fmri-process ~/.claude/skills/fmri-followup
+cp -a skills/fmri-process/. ~/.claude/skills/fmri-process/
+cp -a skills/fmri-followup/. ~/.claude/skills/fmri-followup/
+```
+
+Windows PowerShell 上的 Codex：
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\skills\fmri-process", "$env:USERPROFILE\.codex\skills\fmri-followup" | Out-Null
+Copy-Item -Recurse -Force .\skills\fmri-process\* "$env:USERPROFILE\.codex\skills\fmri-process\"
+Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.codex\skills\fmri-followup\"
+```
+
+Windows PowerShell 上的 Claude 或其他基于 Claude Code 的 agents：
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills\fmri-process", "$env:USERPROFILE\.claude\skills\fmri-followup" | Out-Null
+Copy-Item -Recurse -Force .\skills\fmri-process\* "$env:USERPROFILE\.claude\skills\fmri-process\"
+Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.claude\skills\fmri-followup\"
 ```
 
 其他运行前准备：
