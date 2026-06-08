@@ -2,6 +2,9 @@
 
 Languages: English | [中文](README.zh.md)
 
+> [!IMPORTANT]
+> **News (2026-06-08): XCP-D 26.0.2 visual report issue.** The current default XCP-D image is `26.0.2`. After processing finishes, visual report generation may fail with `TypeError: _warn() got an unexpected keyword argument 'skip_file_prefixes'` during `plot_slices_T1/T2` / brainsprite. See the [Neurostars report](https://neurostars.org/t/xcp-d-26-0-2-fails-during-brainsprite-plot-slices-t1-t2/36172). XCP-D `26.0.3` includes the fix, but as of `2026-06-08`, Docker Hub `pennlinc/xcp_d:latest` still points to `26.0.2`, so do not assume `latest` is the fixed image.
+
 This project provides two skills: `$fmri-process` and `$fmri-followup`. The core goal is **to help beginners who are processing a BIDS dataset for the first time avoid common mistakes and get a successful run with fewer retries**.
 
 What can these skills do? **Tell the agent, in one sentence**, which dataset to process. The agent checks whether the dataset is complete, looks at your local computer or server environment, decides which image file to download and how to pull it, chooses a run strategy for that environment, and can later tell you which stage each subject has reached.

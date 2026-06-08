@@ -2,6 +2,9 @@
 
 语言：[English](README.md) | 中文
 
+> [!IMPORTANT]
+> **News（2026.6.8）：XCP-D 26.0.2 可视化报告问题。** 当前默认的 XCP-D 镜像版本是 `26.0.2`。处理完成后的可视化报告阶段可能报错：`TypeError: _warn() got an unexpected keyword argument 'skip_file_prefixes'`，常见位置是 `plot_slices_T1/T2` / brainsprite。参考这个 [Neurostars 讨论](https://neurostars.org/t/xcp-d-26-0-2-fails-during-brainsprite-plot-slices-t1-t2/36172)。后续的 XCP-D `26.0.3` 已经修复，但截至 `2026.6.8`，Docker Hub 上的 `pennlinc/xcp_d:latest` 仍然指向 `26.0.2`，所以不要默认把 `latest` 当成已经修复的镜像。
+
 本项目包含两个 skills：`$fmri-process`、`$fmri-followup`。核心目的：**让不懂代码、第一次处理 BIDS 数据集的初学者少踩坑，尽可能一次就跑通**。
 
 这组 skills 能做什么？你只需要**用一句话告诉 agent**要处理哪个数据集。agent 会先看数据集是否完整，再结合你的电脑或服务器环境，判断应该下载哪个镜像文件、应该怎么拉取镜像、这个环境到底应该怎么跑，最后还可以继续帮你看每个被试跑到什么阶段。
