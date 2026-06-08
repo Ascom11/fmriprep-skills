@@ -109,6 +109,8 @@ Copy-Item -Recurse -Force .\skills\fmri-process\* "$env:USERPROFILE\.claude\skil
 Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.claude\skills\fmri-followup\"
 ```
 
+### Runtime Prerequisites
+
 Other runtime prerequisites:
 
 - Container software: Apptainer or Singularity is recommended on Linux, WSL, and servers. Native Windows environments use Docker.
@@ -116,6 +118,8 @@ Other runtime prerequisites:
 - FreeSurfer license: fMRIPrep needs this for FreeSurfer. Register at https://surfer.nmr.mgh.harvard.edu/registration.html. Note: fMRIPrep needs a FreeSurfer license even if you do not run surface reconstruction. See https://github.com/nipreps/fmriprep/issues/1747.
 
 Images and templates can be downloaded by the agent after the runtime audit and after you authorize preparation. XCP-D usually does not require TemplateFlow, but some configuration/container runs may trigger template access, so preflight is recommended. This avoids the container trying to download templates during the run, which is more likely to fail.
+
+### User Prompts
 
 Full version:
 

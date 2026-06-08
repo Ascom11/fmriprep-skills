@@ -108,6 +108,8 @@ Copy-Item -Recurse -Force .\skills\fmri-process\* "$env:USERPROFILE\.claude\skil
 Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.claude\skills\fmri-followup\"
 ```
 
+### 运行前准备
+
 其他运行前准备：
 
 - 容器软件：Linux、WSL 和服务器推荐 Apptainer 或 Singularity。Windows 原生环境使用 Docker。
@@ -115,6 +117,8 @@ Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.claude\ski
 - FreeSurfer license：fMRIPrep 中的 freesurfer 需要，可以去 https://surfer.nmr.mgh.harvard.edu/registration.html 注册。注意：即使**不做皮层重建，fMRIPrep 也需要 FreeSurfer license**（参考 https://github.com/nipreps/fmriprep/issues/1747）
 
 镜像和模板可以由 agent 在审查环境之后，由你授权下载。XCP-D 通常不强制要求 TemplateFlow，但某些配置/容器运行可能触发模板访问，因此建议预检，避免容器运行到一半才临时联网下载（容易报错）。
+
+### 用户提示词
 
 完整版本：
 
