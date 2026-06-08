@@ -29,10 +29,17 @@ use `/xcpd_datasets/<alias>`, not host paths.
 ## Config Allowlist
 
 Canonical config key: `xcpd.custom-args`.
-The downstream CLI does not accept config files, and no direct CLI convenience
-flags exist for these values today. Treat this allowlist as translation
-guidance only; report these values as unsupported for direct workflow commands
-unless a future first-class flag is added.
+The downstream workflow CLI does not accept config files directly. Translate
+values in this allowlist into repeatable `--xcpd-custom-arg key=value` entries
+on the fresh `xcpd-audit` command. `run-xcpd` inherits the saved
+`xcpd_custom_args` signature; repeat `--xcpd-custom-arg` there only when you
+need to assert that the current request still matches the saved audit.
+
+Example:
+
+```bash
+--xcpd-custom-arg smoothing=4 --xcpd-custom-arg low_mem=true
+```
 
 Config may contain these typed keys:
 

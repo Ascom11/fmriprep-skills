@@ -64,10 +64,12 @@ Current-turn subject, session, reuse-context, and runtime override values must
 not change saved execution. If any of those values need to change, rerun
 `xcpd-audit`.
 
-XCP-D custom args in config are translation guidance only; read
-[custom-args.md](custom-args.md) before reporting whether a value has an
-explicit CLI flag today. `run-xcpd` only validates saved custom-args
-signatures; it does not replace saved values.
+XCP-D custom args must be added during the fresh `xcpd-audit` step with
+`--xcpd-custom-arg key=value`; read [custom-args.md](custom-args.md) before
+accepting a key. `run-xcpd` inherits the saved `xcpd_custom_args` signature.
+Do not add new custom args at `run-xcpd`; rerun `xcpd-audit` if the user wants
+different custom args. A repeated `--xcpd-custom-arg` on `run-xcpd` is only a
+current-turn signature assertion and must match the saved audit.
 
 ## Command Templates
 

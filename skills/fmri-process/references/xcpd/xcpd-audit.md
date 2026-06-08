@@ -38,9 +38,9 @@ Use [xcpd-args.md](xcpd-args.md) for XCP-D-specific fields:
 When `--xcpd-min-time` is omitted, the wrapper uses `240` for `abcd` and `0`
 for `nichart`.
 
-XCP-D custom args in config are translation guidance only; read
-[custom-args.md](custom-args.md) before reporting whether a value has an
-explicit CLI flag today.
+XCP-D custom args in config must be translated into repeatable
+`--xcpd-custom-arg key=value` CLI entries. Read
+[custom-args.md](custom-args.md) before accepting a key.
 
 ## Command Template
 
@@ -50,8 +50,25 @@ python -m fmri_process.cli xcpd-audit \
   --output-root <output-root> \
   --reuse-context-from <fmriprep-audit-id> \
   --subject <selector> \
-  --xcpd-mode abcd
+  --xcpd-mode abcd \
+  --xcpd-custom-arg smoothing=4 \
+  --xcpd-custom-arg low_mem=true
 ```
+
+Translate config custom args into the same CLI form:
+
+```yaml
+xcpd:
+  custom-args:
+    smoothing: 4
+    low-mem: true
+```
+
+Do not pass the YAML file to the CLI. Do not invent wrapper flags such as
+`--xcpd-smoothing` or `--xcpd-low-mem`, and do not append raw trailing XCP-D
+args. After the fresh audit is ready, `run-xcpd` consumes the saved
+`xcpd_custom_args` signature; it does not add or replace custom args during
+saved execution.
 
 Raw `--bids-root` is optional XCP-D context when
 `--fmriprep-derivatives` is provided. Add `--fs-license`,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import json
 import os
 import re
 from datetime import datetime, timezone
@@ -324,10 +325,14 @@ def explicit_request_fields(args: argparse.Namespace) -> list[str]:
         fields.add("subjects")
     if "xcpd_dataset_items" in vars(args):
         fields.add("xcpd_datasets")
-    if any(field.startswith("fmriprep_custom_") for field in vars(args)):
+    if "fmriprep_custom_arg_items" in vars(args):
         fields.add("fmriprep_custom_args")
+    if "xcpd_custom_arg_items" in vars(args):
+        fields.add("xcpd_custom_args")
     fields.discard("subject_file")
     fields.discard("xcpd_dataset_items")
+    fields.discard("fmriprep_custom_arg_items")
+    fields.discard("xcpd_custom_arg_items")
     return sorted(field for field in fields if field in request_fields)
 
 
@@ -627,8 +632,15 @@ def _cli_request_overrides(args: argparse.Namespace) -> dict[str, Any]:
         if key == "xcpd_dataset_items":
             values["xcpd_datasets"] = _xcpd_dataset_items_to_mapping(value)
             continue
-        if key.startswith("fmriprep_custom_"):
-            custom_args[key.removeprefix("fmriprep_custom_")] = value
+        if key == "fmriprep_custom_arg_items":
+            _merge_custom_arg_mapping(
+                custom_args,
+                _custom_arg_items_to_mapping(value, "--fmriprep-custom-arg"),
+                "--fmriprep-custom-arg",
+            )
+            continue
+        if key == "xcpd_custom_arg_items":
+            values["xcpd_custom_args"] = _custom_arg_items_to_mapping(value, "--xcpd-custom-arg")
             continue
         values[key] = value
     if custom_args:
@@ -649,6 +661,38 @@ def _xcpd_dataset_items_to_mapping(values: Any) -> dict[str, str]:
             raise ValueError("--xcpd-dataset must use alias=/path")
         result[alias] = path
     return result
+
+
+def _custom_arg_items_to_mapping(values: Any, option_name: str) -> dict[str, Any]:
+    items = _string_list_value(values, option_name)
+    result: dict[str, Any] = {}
+    for item in items:
+        if "=" not in item:
+            raise ValueError(f"{option_name} must use key=value")
+        raw_key, raw_value = item.split("=", 1)
+        key = raw_key.strip().replace("-", "_")
+        if not key:
+            raise ValueError(f"{option_name} must include a non-empty key")
+        if key in result:
+            raise ValueError(f"Duplicate custom argument: {raw_key.strip()}")
+        result[key] = _custom_arg_literal(raw_value.strip())
+    return result
+
+
+def _custom_arg_literal(value: str) -> Any:
+    if value == "":
+        return ""
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return value
+
+
+def _merge_custom_arg_mapping(target: dict[str, Any], incoming: dict[str, Any], option_name: str) -> None:
+    for key, value in incoming.items():
+        if key in target:
+            raise ValueError(f"{option_name} duplicates custom argument: {key}")
+        target[key] = value
 
 
 def _text_value(value: Any, field: str) -> str | None:

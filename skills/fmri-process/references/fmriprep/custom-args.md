@@ -5,8 +5,9 @@ arguments are needed.
 
 ## Hard Rule
 
-Custom fMRIPrep args are not a raw shell string. Prefer typed, known values from
-config translation or explicit CLI convenience flags.
+Custom fMRIPrep args are not a raw shell string. Prefer typed, known values
+from config translation or explicit `--fmriprep-custom-arg key=value` CLI
+entries.
 
 Custom args get typed rendering, saved command capture, and a runtime signature.
 They do not get full dataset/runtime semantic review. Prefer first-class route
@@ -24,9 +25,9 @@ support.
 ## Config Allowlist
 
 Canonical config key: `fmriprep.custom-args`.
-The downstream CLI does not accept config files. Values in this allowlist are
-only translation candidates; direct workflow commands currently expose only the
-CLI convenience flags listed below.
+The downstream workflow CLI does not accept config files directly. Translate
+values in this allowlist into repeatable `--fmriprep-custom-arg key=value`
+entries.
 
 Allowed config keys map to official fMRIPrep flags:
 
@@ -61,18 +62,17 @@ Allowed config keys map to official fMRIPrep flags:
 - `resource_monitor` -> `--resource-monitor`
 - `stop_on_first_crash` -> `--stop-on-first-crash`
 
-## CLI Convenience Flags
+## CLI Usage
 
-The CLI exposes only these convenience flags:
+Canonical generic form:
 
-- `--fmriprep-dummy-scans <n>`
-- `--fmriprep-bold2anat-dof <n>`
-- `--fmriprep-random-seed <n>`
-- `--fmriprep-medial-surface-nan`
+```bash
+--fmriprep-custom-arg dummy_scans=4 --fmriprep-custom-arg low_mem=true
+```
 
-Other allowed config keys have no direct downstream CLI flag today. Report them
-as unsupported for direct workflow commands unless a future first-class flag is
-added.
+Do not invent fMRIPrep-prefixed wrapper aliases, and do not append raw trailing
+fMRIPrep arguments. Use the generic custom-arg flag for all allowlisted custom
+keys.
 
 ## Version-Specific Args
 

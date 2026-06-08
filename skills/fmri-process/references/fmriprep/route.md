@@ -97,6 +97,22 @@ python -m fmri_process.cli process \
   --remote-host <remote-host>
 ```
 
+Process with supported fMRIPrep custom args:
+
+```bash
+python -m fmri_process.cli process \
+  --bids-root <bids-root> \
+  --output-root <output-root> \
+  --templateflow-tool-bin <bin-dir> \
+  --subject <selector> \
+  --fmriprep-custom-arg dummy_scans=4 \
+  --fmriprep-custom-arg random_seed=123
+```
+
+Use `--fmriprep-custom-arg key=value` for allowlisted custom args. Do not
+append raw fMRIPrep shell args or invent wrapper flags. The generic custom-arg
+form is the canonical route for config-translated values.
+
 ## Completion
 
 After `process` produces dataset/runtime audit artifacts, report the current

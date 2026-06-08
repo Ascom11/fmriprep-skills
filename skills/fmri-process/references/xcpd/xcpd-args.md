@@ -77,10 +77,12 @@ route explicitly asks to validate TemplateFlow proof. Do not pause a fresh
 ## Custom Args
 
 Read [custom-args.md](custom-args.md) before adding any custom XCP-D flag.
-Known custom arguments use typed rendering from `xcpd.custom-args`; downstream
+Known custom arguments use typed rendering from `xcpd.custom-args` translated
+to repeatable `--xcpd-custom-arg key=value` CLI entries. Downstream workflow
 CLI commands do not accept config files directly. For user-requested custom
 flags outside the local list, warn first; if the user still confirms execution,
 continue through the existing workflow path and report any CLI failure payload.
-Do not pass arbitrary shell strings into the container command, and do not open,
-read, or edit package source files by default to make a flag work. The agent
-must not read or modify Python implementation code by default.
+Do not pass arbitrary shell strings into the container command, do not invent
+wrapper flags such as `--xcpd-smoothing`, and do not open, read, or edit
+package source files by default to make a flag work. The agent must not read or
+modify Python implementation code by default.

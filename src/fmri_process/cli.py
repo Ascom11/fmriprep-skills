@@ -121,6 +121,8 @@ XCPD_TASK_ID_HELP = "XCP-D task selector; repeatable."
 XCPD_BIDS_FILTER_FILE_HELP = "XCP-D BIDS filter JSON path."
 XCPD_DATASET_HELP = "Extra XCP-D dataset binding as alias=/path; repeatable."
 XCPD_MEM_MB_HELP = "XCP-D internal memory limit in MB."
+FMRIPREP_CUSTOM_ARG_HELP = "fMRIPrep custom argument as key=value; repeatable."
+XCPD_CUSTOM_ARG_HELP = "XCP-D custom argument as key=value; repeatable."
 XCPD_MOTION_FILTER_TYPE_HELP = "XCP-D motion filter type."
 XCPD_BAND_STOP_MIN_HELP = "XCP-D motion filter lower frequency in breaths per minute."
 XCPD_BAND_STOP_MAX_HELP = "XCP-D motion filter upper frequency in breaths per minute."
@@ -553,10 +555,13 @@ def add_fmriprep_run_parameter_arguments(sub: argparse.ArgumentParser, *, includ
     sub.add_argument("--anat-only", action="store_true", default=argparse.SUPPRESS, help=ANAT_ONLY_HELP)
     if not include_custom_args:
         return
-    sub.add_argument("--fmriprep-dummy-scans", dest="fmriprep_custom_dummy_scans", type=int, default=argparse.SUPPRESS)
-    sub.add_argument("--fmriprep-bold2anat-dof", dest="fmriprep_custom_bold2anat_dof", type=int, default=argparse.SUPPRESS)
-    sub.add_argument("--fmriprep-random-seed", dest="fmriprep_custom_random_seed", type=int, default=argparse.SUPPRESS)
-    sub.add_argument("--fmriprep-medial-surface-nan", dest="fmriprep_custom_medial_surface_nan", action="store_true", default=argparse.SUPPRESS)
+    sub.add_argument(
+        "--fmriprep-custom-arg",
+        dest="fmriprep_custom_arg_items",
+        action="append",
+        default=argparse.SUPPRESS,
+        help=FMRIPREP_CUSTOM_ARG_HELP,
+    )
 
 
 def add_process_stage_arguments(sub: argparse.ArgumentParser) -> None:
@@ -707,6 +712,13 @@ def add_run_xcpd_arguments(sub: argparse.ArgumentParser) -> None:
         help=XCPD_DATASET_HELP,
     )
     sub.add_argument("--xcpd-mem-mb", type=int, default=argparse.SUPPRESS, help=XCPD_MEM_MB_HELP)
+    sub.add_argument(
+        "--xcpd-custom-arg",
+        dest="xcpd_custom_arg_items",
+        action="append",
+        default=argparse.SUPPRESS,
+        help=XCPD_CUSTOM_ARG_HELP,
+    )
     sub.add_argument(
         "--xcpd-motion-filter-type",
         choices=VALID_XCPD_MOTION_FILTER_TYPES,
