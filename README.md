@@ -3,7 +3,7 @@
 Languages: English | [中文](README.zh.md)
 
 > [!IMPORTANT]
-> **News (2026-06-10): XCP-D default and harness trace update.** The current default XCP-D image is `pennlinc/xcp_d:26.1.0`. Native Windows XCP-D runs can still fail more easily; use WSL, Linux, or a server when available. Do not switch back to `26.0.2` unless you specifically need that version, because older runs may fail during visual report generation; see the [Neurostars report](https://neurostars.org/t/xcp-d-26-0-2-fails-during-brainsprite-plot-slices-t1-t2/36172).
+> **News (2026-06-10): XCP-D default and harness trace update.** The current default XCP-D image is `pennlinc/xcp_d:26.1.0`. Native Windows XCP-D runs can still fail more easily; use WSL, Linux, or a server when available. Do not switch back to `26.0.2` unless you specifically need that version, because older runs may fail during visual report generation; see the [Neurostars report](https://neurostars.org/t/xcp-d-26-0-2-fails-during-brainsprite-plot-slices-t1-t2/36172). Harness trace monitoring now keeps only the first and latest two `run-status` entries per target, so repeated status checks do not crowd out useful context.
 
 This project provides two skills: `$fmri-process` and `$fmri-followup`. The core goal is **to help beginners who are processing a BIDS dataset for the first time avoid common mistakes and get a successful run with fewer retries**.
 

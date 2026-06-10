@@ -37,41 +37,46 @@ reuse prior selectors, status evidence, paths, and findings.
 - Wrap Markdown-sensitive tokens in backticks, including skill names such as
   `$fmri-process`, `$fmri-followup`, route names, CLI flags, command names,
   schema keys, status tokens, and paths.
-- After every `run-status`, append one short `Status Log` entry summarizing
-  the JSON result.
+- After every `run-status`, write one short `Status Log` entry summarizing the
+  JSON result. Keep only the first and latest two `run-status` entries per
+  target so fMRIPrep context remains available when XCP-D monitoring starts.
+  Move important intermediate transitions into `Findings`.
 - When the user corrects path, scope, selector, status interpretation, or
   workflow constraints, append a `user-correction` entry before acting on the
   corrected instruction.
-- Append-only updates must not read the whole trace first. Open the file for
+- Non-status updates must not read the whole trace first. Open the file for
   append/write only.
 - Read the whole trace only for context recovery.
-- Do not maintain a mutable top-level `Current State`. The latest state is the
-  last `Status Log` entry.
+- Do not maintain a mutable top-level `Current State`. The latest state for a
+  target is the latest retained `Status Log` entry for that target.
 
-## Size Limit
+## Compression
 
-Trace size cap: 200 KiB.
+Trace compression threshold: 50 KiB.
 
-- Before appending, check file size from metadata only; do not read the full
-  trace for normal append decisions.
-- If the trace is larger than 200 KiB, spawn a subagent to summarize and compact
-  it before appending more entries. The main agent must not read the full trace
-  for compaction.
-- Only the compaction subagent may read and rewrite the full trace. This is the
-  only size-limit exception to the append-only rule.
-- The compacted trace must preserve raw user request, scope, latest selectors,
-  user corrections, findings, open items, and the last 10 status entries.
-- After compaction, append the new status or correction entry after compaction.
+- After recording a `run-status`, spawn a subagent to summarize and compact
+  when either condition is true: successful completion was recorded, or the
+  retained trace is larger than 50 KiB. Failed or still-running status checks
+  do not trigger compression unless the 50 KiB fallback applies.
+- The main agent must not read the full trace for compression.
+- Only the compression subagent may read and rewrite the full trace for
+  whole-trace summarization.
+- The compacted trace must preserve raw user request, scope, all user
+  corrections, findings, open items, and each target's retained `run-status`
+  entries. Preserve latest selectors through each target's latest retained
+  status entry.
+- The triggering `run-status` is already recorded before compression. The
+  compacted trace must retain it, not append a duplicate afterward.
 
 ## Write Examples
 
 Use the fixed helper script in this directory. Pass values as arguments; do not
 copy inline Python append snippets into normal workflow notes. The script writes
-UTF-8/LF, checks the 200 KiB size cap from metadata only, creates parent
-directories, creates `# Harness Trace` only when the target file is absent or
-empty, and appends without reading the whole trace. When an existing trace does
-not end with a newline, the script writes one newline before the new entry so
-entries do not run together.
+UTF-8/LF, creates parent directories, creates `# Harness Trace` only when the
+target file is absent or empty, and enforces the retained `run-status` window.
+When an existing trace does not end with a
+newline, the script writes one newline before the new entry so entries do not
+run together.
 
 Free-text fields such as `--raw`, `--goal`, `--constraints`, `--evidence`,
 `--action`, and `--next` are written as fenced Markdown blocks. This protects

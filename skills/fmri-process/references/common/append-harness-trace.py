@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-SIZE_LIMIT_BYTES = 200 * 1024
+SIZE_LIMIT_BYTES = 50 * 1024
 TRACE_HEADER = "# Harness Trace\n\n"
 
 
@@ -40,9 +40,9 @@ def main() -> int:
 
     text = build_entry(args)
     if args.remote_host:
-        append_remote(args.remote_host, args.remote_python, args.trace_path, text)
+        append_remote(args.remote_host, args.remote_python, args.trace_path, args.entry_kind, text)
     else:
-        append_local(Path(args.trace_path), text)
+        append_local(Path(args.trace_path), args.entry_kind, text)
     return 0
 
 
@@ -95,8 +95,15 @@ def build_entry(args: argparse.Namespace) -> str:
     )
 
 
-def append_local(trace: Path, text: str) -> None:
+def append_local(trace: Path, entry_kind: str, text: str) -> None:
     trace.parent.mkdir(parents=True, exist_ok=True)
+    if entry_kind == "run-status":
+        append_run_status_local(trace, text)
+        return
+    append_text_local(trace, text)
+
+
+def append_text_local(trace: Path, text: str) -> None:
     size = trace.stat().st_size if trace.exists() else 0
     if size > SIZE_LIMIT_BYTES:
         raise SystemExit("spawn subagent to compact trace before appending")
@@ -113,21 +120,141 @@ def append_local(trace: Path, text: str) -> None:
             handle.write("\n")
 
 
+def append_run_status_local(trace: Path, text: str) -> None:
+    existing = trace.read_text(encoding="utf-8") if trace.exists() else TRACE_HEADER
+    if not existing:
+        existing = TRACE_HEADER
+    if not existing.endswith("\n"):
+        existing += "\n"
+    compacted = trim_run_status_entries(existing + text)
+    tmp = trace.with_suffix(trace.suffix + ".tmp")
+    tmp.write_text(compacted, encoding="utf-8", newline="\n")
+    tmp.replace(trace)
+    if _entry_status(text) == "completed" or len(compacted.encode("utf-8")) > SIZE_LIMIT_BYTES:
+        raise SystemExit("spawn subagent to compact trace")
+
+
+def trim_run_status_entries(text: str) -> str:
+    lines = text.splitlines(keepends=True)
+    starts = [index for index, line in enumerate(lines) if line.startswith("### ")]
+    if not starts:
+        return text
+    starts.append(len(lines))
+    prefix = lines[: starts[0]]
+    blocks = [lines[start:end] for start, end in zip(starts, starts[1:])]
+    run_status_by_target: dict[str, list[int]] = {}
+    for index, block in enumerate(blocks):
+        if _block_kind(block) == "run-status":
+            run_status_by_target.setdefault(_block_target(block), []).append(index)
+    keep_run_status: set[int] = set()
+    for indexes in run_status_by_target.values():
+        keep_run_status.add(indexes[0])
+        keep_run_status.update(indexes[-2:])
+    kept_lines = list(prefix)
+    for index, block in enumerate(blocks):
+        if _block_kind(block) == "run-status" and index not in keep_run_status:
+            continue
+        kept_lines.extend(block)
+    return "".join(kept_lines)
+
+
+def _block_kind(block: list[str]) -> str | None:
+    if not block:
+        return None
+    parts = block[0].strip().split()
+    return parts[-1] if len(parts) >= 3 else None
+
+
+def _block_target(block: list[str]) -> str:
+    for line in block:
+        if line.startswith("- Target:"):
+            value = line.split(":", 1)[1].strip()
+            return value.strip("`") or "unknown"
+    return "unknown"
+
+
+def _entry_status(text: str) -> str | None:
+    for line in text.splitlines():
+        if line.startswith("- Status:"):
+            return line.split(":", 1)[1].strip().strip("`")
+    return None
+
+
 def file_ends_with_newline(trace: Path) -> bool:
     with trace.open("rb") as handle:
         handle.seek(-1, 2)
         return handle.read(1) == b"\n"
 
 
-def append_remote(remote_host: str, remote_python: str, trace_path: str, text: str) -> None:
+def append_remote(remote_host: str, remote_python: str, trace_path: str, entry_kind: str, text: str) -> None:
     remote_code = """from pathlib import Path
 import sys
 
 p = Path(sys.argv[1])
+entry_kind = sys.argv[2]
 text = sys.stdin.read()
 p.parent.mkdir(parents=True, exist_ok=True)
+SIZE_LIMIT_BYTES = 50 * 1024
+TRACE_HEADER = "# Harness Trace\\n\\n"
+
+def block_kind(block):
+    if not block:
+        return None
+    parts = block[0].strip().split()
+    return parts[-1] if len(parts) >= 3 else None
+
+def block_target(block):
+    for line in block:
+        if line.startswith("- Target:"):
+            value = line.split(":", 1)[1].strip()
+            return value.strip("`") or "unknown"
+    return "unknown"
+
+def entry_status(content):
+    for line in content.splitlines():
+        if line.startswith("- Status:"):
+            return line.split(":", 1)[1].strip().strip("`")
+    return None
+
+def trim_run_status_entries(content):
+    lines = content.splitlines(keepends=True)
+    starts = [index for index, line in enumerate(lines) if line.startswith("### ")]
+    if not starts:
+        return content
+    starts.append(len(lines))
+    prefix = lines[:starts[0]]
+    blocks = [lines[start:end] for start, end in zip(starts, starts[1:])]
+    by_target = {}
+    for index, block in enumerate(blocks):
+        if block_kind(block) == "run-status":
+            by_target.setdefault(block_target(block), []).append(index)
+    keep = set()
+    for indexes in by_target.values():
+        keep.add(indexes[0])
+        keep.update(indexes[-2:])
+    kept = list(prefix)
+    for index, block in enumerate(blocks):
+        if block_kind(block) == "run-status" and index not in keep:
+            continue
+        kept.extend(block)
+    return "".join(kept)
+
+if entry_kind == "run-status":
+    existing = p.read_text(encoding="utf-8") if p.exists() else TRACE_HEADER
+    if not existing:
+        existing = TRACE_HEADER
+    if not existing.endswith("\\n"):
+        existing += "\\n"
+    compacted = trim_run_status_entries(existing + text)
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    tmp.write_text(compacted, encoding="utf-8", newline="\\n")
+    tmp.replace(p)
+    if entry_status(text) == "completed" or len(compacted.encode("utf-8")) > SIZE_LIMIT_BYTES:
+        raise SystemExit("spawn subagent to compact trace")
+    raise SystemExit(0)
+
 size = p.stat().st_size if p.exists() else 0
-if size > 200 * 1024:
+if size > SIZE_LIMIT_BYTES:
     raise SystemExit("spawn subagent to compact trace before appending")
 needs_header = size == 0
 needs_newline = False
@@ -145,7 +272,10 @@ with p.open("a", encoding="utf-8", newline="\\n") as handle:
     if not text.endswith("\\n"):
         handle.write("\\n")
 """
-    remote_cmd = f"{shlex.quote(remote_python)} -c {shlex.quote(remote_code)} {shlex.quote(trace_path)}"
+    remote_cmd = (
+        f"{shlex.quote(remote_python)} -c {shlex.quote(remote_code)} "
+        f"{shlex.quote(trace_path)} {shlex.quote(entry_kind)}"
+    )
     subprocess.run(
         ["ssh", remote_host, remote_cmd],
         input=text,

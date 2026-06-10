@@ -3,7 +3,7 @@
 语言：[English](README.md) | 中文
 
 > [!IMPORTANT]
-> **News（2026.6.10）：XCP-D 默认镜像与 harness trace 更新。** 当前默认 XCP-D 镜像是 `pennlinc/xcp_d:26.1.0`。Windows 原生环境跑 XCP-D 仍然更容易出问题；能用 WSL、Linux 或服务器时，建议优先用这些环境。除非确实需要旧版本，否则不建议回退到 `26.0.2`，因为旧版本可能在 visual report 阶段报错；相关问题见 [Neurostars 讨论](https://neurostars.org/t/xcp-d-26-0-2-fails-during-brainsprite-plot-slices-t1-t2/36172)。
+> **News（2026.6.10）：XCP-D 默认镜像与 harness trace 更新。** 当前默认 XCP-D 镜像是 `pennlinc/xcp_d:26.1.0`。Windows 原生环境跑 XCP-D 仍然更容易出问题；能用 WSL、Linux 或服务器时，建议优先用这些环境。除非确实需要旧版本，否则不建议回退到 `26.0.2`，因为旧版本可能在 visual report 阶段报错；相关问题见 [Neurostars 讨论](https://neurostars.org/t/xcp-d-26-0-2-fails-during-brainsprite-plot-slices-t1-t2/36172)。Harness trace 监测现在按 target 只保留第一条和最新两条 `run-status`，减少重复状态记录挤占上下文。
 
 本项目包含两个 skills：`$fmri-process`、`$fmri-followup`。核心目的：**让不懂代码、第一次处理 BIDS 数据集的初学者少踩坑，尽可能一次就跑通**。
 
