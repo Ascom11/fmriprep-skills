@@ -10,11 +10,13 @@ unstated shell state or site notes.
 
 The commands used to prepare TemplateFlow are `datalad`, `git`, and
 `git-annex`. Command availability is proven before `path-probe` by the
-agent-side path-preflight check.
+agent-side path-preflight check. Use first-line `git annex version | head -n 1`
+output; the full command can print too much environment detail.
 Manual prepare can run bounded version commands before materialization as a
 human-readable sanity check, but those checks do not update audit state. Use a
-60-second cap for `datalad --version` and `git annex version`, especially on
-remote hosts, because the first invocation may pay conda/env cold-start cost.
+60-second cap for `datalad --version` and `git annex version | head -n 1`,
+especially on remote hosts, because the first invocation may pay conda/env
+cold-start cost.
 
 If the user names a conda environment or other env, find its target `bin`
 directory during path preflight. Pass only that concrete bin directory to
@@ -47,7 +49,7 @@ PowerShell or CMD.
 ```bash
 timeout 60 datalad --version
 timeout 10 git --version
-timeout 60 git annex version
+timeout 60 sh -c 'git annex version | head -n 1'
 datalad install -s ///templateflow "${templateflow_home}"
 cd "${templateflow_home}" && datalad get -J8 "tpl-${template_name}"
 ```
@@ -71,7 +73,7 @@ bin directory. Do not copy `PATH="${bin_dir}:$PATH"` or
 ```bash
 PATH="${bin_dir}:$PATH" timeout 60 datalad --version
 PATH="${bin_dir}:$PATH" timeout 10 git --version
-PATH="${bin_dir}:$PATH" timeout 60 git annex version
+PATH="${bin_dir}:$PATH" timeout 60 sh -c 'git annex version | head -n 1'
 PATH="${bin_dir}:$PATH" datalad install -s ///templateflow "${templateflow_home}"
 cd "${templateflow_home}" && PATH="${bin_dir}:$PATH" datalad get -J8 "tpl-${template_name}"
 cd "${templateflow_home}" && PATH="${bin_dir}:$PATH" git annex get -J8 "tpl-${template_name}"
@@ -94,7 +96,7 @@ PowerShell examples:
 $env:PATH = "${bin_dir};$env:PATH"
 Start-Job { datalad --version } | Wait-Job -Timeout 60 | Receive-Job
 Start-Job { git --version } | Wait-Job -Timeout 10 | Receive-Job
-Start-Job { git annex version } | Wait-Job -Timeout 60 | Receive-Job
+Start-Job { git annex version | Select-Object -First 1 } | Wait-Job -Timeout 60 | Receive-Job
 datalad install -s ///templateflow "${templateflow_home}"
 Push-Location "${templateflow_home}"; datalad get -J8 "tpl-${template_name}"; Pop-Location
 Push-Location "${templateflow_home}"; git annex get -J8 "tpl-${template_name}"; Pop-Location
@@ -106,7 +108,7 @@ CMD examples:
 set "PATH=${bin_dir};%PATH%"
 datalad --version
 git --version
-git annex version
+powershell -NoProfile -Command "git annex version | Select-Object -First 1"
 datalad install -s ///templateflow "${templateflow_home}"
 pushd "${templateflow_home}" && datalad get -J8 "tpl-${template_name}" & popd
 pushd "${templateflow_home}" && git annex get -J8 "tpl-${template_name}" & popd
@@ -119,16 +121,13 @@ with POSIX paths.
 
 ## Unverified Warning
 
-If TemplateFlow content exists but command proof is unavailable or inconclusive,
-the audit may report warning code `templateflow_unverified`. This is not a
-prepare requirement. Do not run manual directory sweeps to clear it.
+If audit returns `templateflow_unverified`, report the structured warning. It is
+not a prepare requirement. Do not run manual directory sweeps to clear it.
 
 Prefer a working `--templateflow-tool-bin <bin-dir>` selected during path
 preflight, then rerun the matching runtime audit against the same saved inputs.
-If no
-DataLad/git-annex proof can be produced, report the warning plainly:
-fMRIPrep/XCP-D may later fail if TemplateFlow files are absent, unreadable, or
-try to download in a read-only or no-network container.
+If no DataLad/git-annex proof can be produced, report the saved warning and
+rerun the matching audit only after the tool-bin or TemplateFlow input changes.
 
 There is no alternate TemplateFlow proof mode.
 

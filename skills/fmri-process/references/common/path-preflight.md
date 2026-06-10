@@ -25,7 +25,7 @@ For fMRIPrep runtime-capable routes, do the TemplateFlow tool precheck before
    to workflow CLI commands.
 2. Check that the selected target shell can run `datalad` and `git-annex`.
    Use bounded checks such as `timeout 60 datalad --version` and
-   `timeout 60 git annex version`; on remote hosts, run them in the remote
+   `timeout 60 sh -c 'git annex version | head -n 1'`; on remote hosts, run them in the remote
    shell where later TemplateFlow materialization will run. Do not use a 10-second cap for the first remote DataLad/git-annex version probe because conda/env cold start can be slow.
 3. If default target `$PATH` cannot run both commands, try only a bounded candidate-bin search before pausing.
    Allowed roots are user-named conda/env roots, `conda env list` entries, and site-known env roots for the selected
@@ -34,7 +34,7 @@ For fMRIPrep runtime-capable routes, do the TemplateFlow tool precheck before
    Bound the search with a short timeout and a small candidate cap.
 4. A fallback candidate is valid only when the same concrete `bin` directory
    can run `timeout 60 datalad --version`, `timeout 10 git --version`, and
-   `timeout 60 git annex version` in the target shell. Use that directory as
+   `timeout 60 sh -c 'git annex version | head -n 1'` in the target shell. Use that directory as
    `--templateflow-tool-bin <bin-dir>`.
 5. If no default or bounded-search candidate works, pause and ask for a working conda env or concrete `bin` directory.
    Do not continue into audit, prepare-probe, or execution.

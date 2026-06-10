@@ -3,7 +3,7 @@
 Languages: English | [中文](README.zh.md)
 
 > [!IMPORTANT]
-> **News (2026-06-08): XCP-D 26.0.2 visual report issue.** The current default XCP-D image is `26.0.2`. After processing finishes, visual report generation may fail with `TypeError: _warn() got an unexpected keyword argument 'skip_file_prefixes'` during `plot_slices_T1/T2` / brainsprite. See the [Neurostars report](https://neurostars.org/t/xcp-d-26-0-2-fails-during-brainsprite-plot-slices-t1-t2/36172). XCP-D `26.0.3` includes the fix, but as of `2026-06-08`, Docker Hub `pennlinc/xcp_d:latest` still points to `26.0.2`, so do not assume `latest` is the fixed image.
+> **News (2026-06-10): XCP-D default and harness trace update.** The current default XCP-D image is `pennlinc/xcp_d:26.1.0`. Native Windows XCP-D runs can still fail more easily; use WSL, Linux, or a server when available. Do not switch back to `26.0.2` unless you specifically need that version, because older runs may fail during visual report generation; see the [Neurostars report](https://neurostars.org/t/xcp-d-26-0-2-fails-during-brainsprite-plot-slices-t1-t2/36172).
 
 This project provides two skills: `$fmri-process` and `$fmri-followup`. The core goal is **to help beginners who are processing a BIDS dataset for the first time avoid common mistakes and get a successful run with fewer retries**.
 
@@ -65,21 +65,26 @@ If you want to run XCP-D, the agent first checks whether the fMRIPrep outputs ar
 ### Install Dependencies
 
 ```bash
-git clone https://github.com/Ascom11/fmriprep-skills.git
-cd fmriprep-skills
+if [ -d fmriprep-skills/.git ]; then
+  cd fmriprep-skills
+  git pull --ff-only
+else
+  git clone https://github.com/Ascom11/fmriprep-skills.git
+  cd fmriprep-skills
+fi
 python -m pip install -e .
 python -m pip show fmri-proc-tools
 ```
 
 ### Copy Skills
 
-Run these commands from the `fmriprep-skills` repository root. Re-run them
-after updating this repository; existing skill files with the same names are
-overwritten.
+Run these commands from the `fmriprep-skills` repository root. Remove the old
+skill directories first so deleted or renamed files do not remain installed.
 
 Linux, macOS, WSL, or remote shell for Codex:
 
 ```bash
+rm -rf ~/.codex/skills/fmri-process ~/.codex/skills/fmri-followup
 mkdir -p ~/.codex/skills/fmri-process ~/.codex/skills/fmri-followup
 cp -a skills/fmri-process/. ~/.codex/skills/fmri-process/
 cp -a skills/fmri-followup/. ~/.codex/skills/fmri-followup/
@@ -88,6 +93,7 @@ cp -a skills/fmri-followup/. ~/.codex/skills/fmri-followup/
 Linux, macOS, WSL, or remote shell for Claude or other Claude Code based agents:
 
 ```bash
+rm -rf ~/.claude/skills/fmri-process ~/.claude/skills/fmri-followup
 mkdir -p ~/.claude/skills/fmri-process ~/.claude/skills/fmri-followup
 cp -a skills/fmri-process/. ~/.claude/skills/fmri-process/
 cp -a skills/fmri-followup/. ~/.claude/skills/fmri-followup/
@@ -96,6 +102,7 @@ cp -a skills/fmri-followup/. ~/.claude/skills/fmri-followup/
 Windows PowerShell for Codex:
 
 ```powershell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.codex\skills\fmri-process", "$env:USERPROFILE\.codex\skills\fmri-followup" -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\skills\fmri-process", "$env:USERPROFILE\.codex\skills\fmri-followup" | Out-Null
 Copy-Item -Recurse -Force .\skills\fmri-process\* "$env:USERPROFILE\.codex\skills\fmri-process\"
 Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.codex\skills\fmri-followup\"
@@ -104,6 +111,7 @@ Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.codex\skil
 Windows PowerShell for Claude or other Claude Code based agents:
 
 ```powershell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\skills\fmri-process", "$env:USERPROFILE\.claude\skills\fmri-followup" -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills\fmri-process", "$env:USERPROFILE\.claude\skills\fmri-followup" | Out-Null
 Copy-Item -Recurse -Force .\skills\fmri-process\* "$env:USERPROFILE\.claude\skills\fmri-process\"
 Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.claude\skills\fmri-followup\"
@@ -307,7 +315,7 @@ docker://nipreps/fmriprep:25.2.5
 Default XCP-D image version:
 
 ```text
-docker://pennlinc/xcp_d:26.0.2
+docker://pennlinc/xcp_d:26.1.0
 ```
 
 Default fMRIPrep output spaces:

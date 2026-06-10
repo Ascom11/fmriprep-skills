@@ -173,13 +173,14 @@ This example shows one concise reporting shape. Plain language comes first;
 trace codes, when useful, stay at the end of a row.
 
 ```text
-Current conclusion: The review is complete; preprocessing remains paused.
+Current conclusion: Review complete; preprocessing remains paused.
 
-Data readiness: 8 subjects were selected; 7 are runnable, and `sub-003` is excluded.
+Data readiness: 8 selected; 7 runnable; `sub-003` excluded.
 
-Runtime readiness: Remote Slurm and Apptainer are selected. The fMRIPrep image still needs preparation. TemplateFlow is present but not fully proven.
+Runtime readiness: Remote Slurm + Apptainer selected. fMRIPrep image needs preparation. TemplateFlow present but unverified.
 
 Runtime readiness for local run: Docker is selected. This run is configured for 5 subjects at the same time, with 4 CPU threads per subject. The current environment has 20 detected CPUs; keep at least 1-2 CPUs free for the system and Docker, otherwise the run may slow down or fail.
+Local CPU check: concurrent subjects * CPU threads per subject = 5 * 4 = 20; available CPUs in this environment = 20.
 
 Important paths:
 out: `/path/to/bids/derivatives/fmriprep`
@@ -192,15 +193,15 @@ Storage check: derivatives (3.96 GB) + work (8.37 GB ~ 11.16 GB) < target drive 
 Remote storage check: Remote free-space comparison unavailable: ssh unavailable.
 
 Must fix before starting:
-Missing FreeSurfer license | ★★☆☆☆ | The FreeSurfer license file is not available in the place where preprocessing will run. | Advice: <advice from structured finding> | code: `missing_fs_license`
+FreeSurfer license missing | ★★☆☆☆ | <meaning from structured finding> | Advice: <advice from structured finding> | code: `missing_fs_license`
 
 Tool can prepare:
-fMRIPrep image needs preparation | ★★★☆☆ | The fMRIPrep image still needs to be prepared before preprocessing can be reconsidered. | Advice: <advice from structured finding> | code: `prepare_runtime_required_fmriprep_image`
+fMRIPrep image needs preparation | ★★★☆☆ | <meaning from structured finding> | Advice: <advice from structured finding> | code: `prepare_runtime_required_fmriprep_image`
 
 Warnings:
-TemplateFlow not fully proven | ★★★☆☆ | TemplateFlow exists, but the required cache was not fully proven. Execution may fail later if files are missing, unreadable, or require network access. | Advice: <advice from structured finding> | code: `templateflow_unverified`
+TemplateFlow unverified | ★★★☆☆ | <meaning from structured finding> | Advice: <advice from structured finding> | code: `templateflow_unverified`
 
-Next step: Provide a readable FreeSurfer license path for the selected machine, then run readiness review again.
+Next step: Provide a readable FreeSurfer license path, then run readiness review again.
 ```
 
 

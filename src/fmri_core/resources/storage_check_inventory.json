@@ -521,6 +521,85 @@
         "unresolved_reason": "Executive summary HTML size depends on rendered content."
       },
       {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_space-MNI152NLin6Asym_desc-preproc_T1w.nii.gz",
+        "estimation_mode": "strict",
+        "size_rule": "shape_fixed",
+        "shape_name": "MNI152NLin6Asym_res1",
+        "bytes_per_value": 2
+      },
+      {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_hemi-L_space-fsLR_den-32k_white.surf.gii",
+        "estimation_mode": "strict",
+        "size_rule": "fslr_surface"
+      },
+      {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_hemi-R_space-fsLR_den-32k_white.surf.gii",
+        "estimation_mode": "strict",
+        "size_rule": "fslr_surface"
+      },
+      {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_hemi-L_space-fsLR_den-32k_pial.surf.gii",
+        "estimation_mode": "strict",
+        "size_rule": "fslr_surface"
+      },
+      {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_hemi-R_space-fsLR_den-32k_pial.surf.gii",
+        "estimation_mode": "strict",
+        "size_rule": "fslr_surface"
+      },
+      {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_hemi-L_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii",
+        "estimation_mode": "strict",
+        "size_rule": "fslr_surface"
+      },
+      {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_hemi-R_space-fsLR_den-32k_desc-hcp_midthickness.surf.gii",
+        "estimation_mode": "strict",
+        "size_rule": "fslr_surface"
+      },
+      {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_hemi-L_space-fsLR_den-32k_desc-hcp_inflated.surf.gii",
+        "estimation_mode": "strict",
+        "size_rule": "fslr_surface"
+      },
+      {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_hemi-R_space-fsLR_den-32k_desc-hcp_inflated.surf.gii",
+        "estimation_mode": "strict",
+        "size_rule": "fslr_surface"
+      },
+      {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_hemi-L_space-fsLR_den-32k_desc-hcp_vinflated.surf.gii",
+        "estimation_mode": "strict",
+        "size_rule": "fslr_surface"
+      },
+      {
+        "repeat": "once",
+        "xcpd_modes": ["abcd"],
+        "path_pattern": "anat/sub-<label>_hemi-R_space-fsLR_den-32k_desc-hcp_vinflated.surf.gii",
+        "estimation_mode": "strict",
+        "size_rule": "fslr_surface"
+      },
+      {
         "repeat": "bold",
         "path_pattern": "func/sub-<label>_task-<label>_desc-denoised_bold.nii.gz",
         "estimation_mode": "strict",

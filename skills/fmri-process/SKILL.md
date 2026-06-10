@@ -40,7 +40,7 @@ Audit results, saved continuation, and saved `next_action` values are route advi
 
 ## Reference Loading By Request
 
-Start with the route contract that matches the classified request. Do not pre-load detail references from another route. Load [references/common/audit-report.md](references/common/audit-report.md) only after audit artifacts exist and the next action is user-facing audit output.
+Start with the route contract that matches the classified request. Do not pre-load detail references from another route.
 
 If a user instruction is wrong or a parameter is unclear, read the matching
 route and argument reference docs first before answering, broad searching, or
@@ -69,7 +69,7 @@ For fresh fMRIPrep `dataset-audit`, run dataset-only preflight for paths only; d
 
 ## Audit Report Before Reply
 
-After audit artifacts exist and before any user-facing audit report, read [references/common/audit-report.md](references/common/audit-report.md). Use it for the plain-language report shape, confirmation items, and pause/next-step wording. Do not answer from the route contract, CLI payload, or raw audit JSON alone when reporting audit results.
+Load [references/common/audit-report.md](references/common/audit-report.md) only after audit artifacts exist and the next action is user-facing audit output. Use it for the plain-language report shape, confirmation items, and pause/next-step wording. Do not answer from the route contract, CLI payload, or raw audit JSON alone when reporting audit results.
 
 ## Operating Boundary
 

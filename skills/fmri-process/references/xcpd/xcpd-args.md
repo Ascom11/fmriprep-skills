@@ -10,9 +10,9 @@ This file covers XCP-D-specific parameter semantics only.
 
 | Argument | Accepted by | Meaning |
 | --- | --- | --- |
-| `--xcpd-image <xcpd-image>` | `xcpd-audit`, `run-xcpd` | Registry reference or target-visible XCP-D image path. Defaults to `docker://pennlinc/xcp_d:26.0.2` when omitted. |
+| `--xcpd-image <xcpd-image>` | `xcpd-audit`, `run-xcpd` | Registry reference or target-visible XCP-D image path. Defaults to `docker://pennlinc/xcp_d:26.1.0` when omitted. |
 | `--xcpd-mode <abcd\|nichart>` | `xcpd-audit`, `run-xcpd` | Mode-specific derivative contract. `abcd` needs fsLR/CIFTI derivatives; `nichart` needs MNI-space NIfTI derivatives. |
-| `--xcpd-min-time <seconds>` | `xcpd-audit`, `run-xcpd` | Minimum run duration warning threshold. When omitted, wrapper uses `240` for `abcd` and `0` for `nichart`. |
+| `--xcpd-min-time <seconds>` | `xcpd-audit`, `run-xcpd` | Minimum usable-time warning threshold after FD censoring. When omitted, wrapper uses `240` for `abcd` and `0` for `nichart`. |
 | `--xcpd-task-id <task>` | `xcpd-audit`, `run-xcpd` | XCP-D task filter. Repeat for multiple tasks. `run-xcpd` uses the saved audit value only. |
 | `--xcpd-bids-filter-file <json>` | `xcpd-audit`, `run-xcpd` | XCP-D BIDS filter JSON. Audit checks that it is valid JSON. The file is bound into the container and rendered as `--bids-filter-file /xcpd_bids_filter.json`. |
 | `--xcpd-dataset <alias=path>` | `xcpd-audit`, `run-xcpd` | Extra derivative or atlas dataset for XCP-D `--datasets`. Repeat for multiple aliases. Aliases must be simple tokens. Paths are audited and bound into the container. |

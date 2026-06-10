@@ -37,6 +37,11 @@ Use [xcpd-args.md](xcpd-args.md) for XCP-D-specific fields:
 
 When `--xcpd-min-time` is omitted, the wrapper uses `240` for `abcd` and `0`
 for `nichart`.
+The min-time audit uses estimated usable time after FD censoring, not raw BOLD
+duration. If usable time cannot be estimated, report
+`xcpd_post_censor_time_unestimated` as a warning, not as an input blocker.
+For `nichart`, NiChart derivative mismatch is warning-only; report the
+structured finding without blocking execution.
 
 XCP-D custom args in config must be translated into repeatable
 `--xcpd-custom-arg key=value` CLI entries. Read
@@ -83,3 +88,6 @@ If the audit reports wrapper execution gates such as image or runtime
 `needs_prepare`, report the listed `prepare_requirements` and request
 current-turn prepare approval. Do not implicitly continue from audit to prepare
 or run. After approved preparation, rerun `xcpd-audit` before any `run-xcpd`.
+If the runtime audit returns XCP-D warning codes, keep the audit paused unless
+the user already approved execution. Do not call warnings blockers; report the
+structured findings from the audit.

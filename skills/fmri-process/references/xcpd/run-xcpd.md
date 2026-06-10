@@ -38,6 +38,8 @@ Use [xcpd-args.md](xcpd-args.md) for XCP-D-specific fields:
 
 When `--xcpd-min-time` is omitted, the wrapper uses `240` for `abcd` and `0`
 for `nichart`.
+Do not promote saved XCP-D warning codes to blockers; report structured
+findings from the saved audit.
 
 Runtime-looking and filter arguments exposed by the CLI, such as
 `--fs-license`, `--templateflow-tool-bin`, `--xcpd-image`, resource flags,

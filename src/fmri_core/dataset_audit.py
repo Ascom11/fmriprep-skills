@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import shlex
 from dataclasses import replace
@@ -39,7 +41,11 @@ HIGH_RESOLUTION_OUTPUT_ADVICE = {
 XCPD_ABCD_CIFTI_REASON = "missing_xcpd_abcd_cifti_derivatives"
 XCPD_NICHART_NIFTI_REASON = "missing_xcpd_nichart_nifti_derivatives"
 XCPD_BIDS_ROOT_NOT_PROVIDED_WARNING = "xcpd_bids_root_not_provided"
+XCPD_POST_CENSOR_TIME_UNESTIMATED_WARNING = "xcpd_post_censor_time_unestimated"
 XCPD_DATASET_ALIAS_PATTERN = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-"
+DEFAULT_XCPD_FD_THRESH = 0.3
+DEFAULT_XCPD_HEAD_RADIUS_MM = 50.0
+MOTION_COLUMNS = ("trans_x", "trans_y", "trans_z", "rot_x", "rot_y", "rot_z")
 
 
 def _xcpd_output_root(output_root: RequestPath) -> RequestPath:
@@ -110,8 +116,16 @@ def audit_dataset(request: RequestConfig, progress: ProgressCallback | None = No
                     fmriprep_reason_codes + [instruction["reason_code"]]
                 )
         xcpd_min_time_warning_details = list(audited.pop("xcpd_min_time_warning_details", []))
+        xcpd_unestimated_details = list(audited.pop("xcpd_post_censor_time_unestimated_details", []))
+        xcpd_warning_codes = list(audited.pop("xcpd_warning_codes", []))
+        xcpd_warning_details = list(audited.pop("xcpd_warning_details", []))
         if collect_xcpd_min_time_warnings:
+            warnings.extend(xcpd_warning_codes)
+            warning_details.extend(xcpd_warning_details)
             warning_details.extend(xcpd_min_time_warning_details)
+            if xcpd_unestimated_details:
+                warnings.append(XCPD_POST_CENSOR_TIME_UNESTIMATED_WARNING)
+                warning_details.extend(xcpd_unestimated_details)
         xcpd_request_blockers = xcpd_dataset_blockers + xcpd_filter_blockers
         if xcpd_request_blockers:
             _add_xcpd_reason_codes(audited, xcpd_request_blockers)
@@ -137,7 +151,7 @@ def audit_dataset(request: RequestConfig, progress: ProgressCallback | None = No
     existing_derivatives = _review_existing_derivatives(request, storage_subjects)
     payload["existing_derivatives"] = existing_derivatives
     storage_check, storage_warnings = run_storage_check_with_warnings(request, storage_subjects)
-    if collect_xcpd_min_time_warnings and warning_details:
+    if collect_xcpd_min_time_warnings and any("remains after FD censoring" in detail for detail in warning_details):
         warnings.append("xcpd_min_time_not_met")
     payload["warnings"] = _dedupe(
         warnings
@@ -181,10 +195,16 @@ def audit_xcpd_derivatives(
     xcpd_dataset_blockers = _xcpd_dataset_blockers(xcpd_datasets)
     xcpd_filter_blockers = list(xcpd_bids_filter_file.get("reason_codes") or [])
     audited_sessions: list[dict[str, Any]] = []
+    xcpd_warning_codes: list[str] = []
     warning_details: list[str] = []
+    unestimated_warning_details: list[str] = []
     for subject in subjects:
         audited = _audit_xcpd_derivative_subject(subject, request, remote_probe)
+        xcpd_warning_codes.extend(list(audited.pop("xcpd_warning_codes", [])))
+        warning_details.extend(list(audited.pop("xcpd_warning_details", [])))
         warning_details.extend(list(audited.pop("xcpd_min_time_warning_details", [])))
+        unestimated_details = list(audited.pop("xcpd_post_censor_time_unestimated_details", []))
+        unestimated_warning_details.extend(unestimated_details)
         xcpd_request_blockers = xcpd_dataset_blockers + xcpd_filter_blockers
         if xcpd_request_blockers:
             _add_xcpd_reason_codes(audited, xcpd_request_blockers)
@@ -195,10 +215,13 @@ def audit_xcpd_derivatives(
     artifact_subjects = [_build_artifact_subject(subject) for subject in storage_subjects]
     existing_derivatives = _review_existing_derivatives(request, storage_subjects)
     storage_check, storage_warnings = run_storage_check_with_warnings(request, storage_subjects)
-    warnings = list(storage_warnings) + _existing_derivatives_warning_codes(existing_derivatives, target=request.target)
+    warnings = xcpd_warning_codes + list(storage_warnings) + _existing_derivatives_warning_codes(existing_derivatives, target=request.target)
+    if unestimated_warning_details:
+        warnings.append(XCPD_POST_CENSOR_TIME_UNESTIMATED_WARNING)
+        warning_details.extend(unestimated_warning_details)
     if request.bids_root is None:
         warnings.append(XCPD_BIDS_ROOT_NOT_PROVIDED_WARNING)
-    if request.xcpd_min_time > 0 and warning_details:
+    if request.xcpd_min_time > 0 and any("remains after FD censoring" in detail for detail in warning_details):
         warnings.append("xcpd_min_time_not_met")
     payload = {
         "dataset_type": "fmriprep_derivatives",
@@ -239,7 +262,7 @@ def discover_xcpd_derivative_subjects(request: RequestConfig) -> list[SubjectEnt
             subject_ids = sorted(
                 _normalize_subject_id(path.name)
                 for path in _remote_glob_values(probe)
-                if path.name.startswith("sub-")
+                if path.name.startswith("sub-") and _probe_path_info(probe, path).get("is_dir") is True
             )
         else:
             subject_ids = sorted(
@@ -470,6 +493,7 @@ def _remote_xcpd_derivative_patterns(
         patterns.extend(
             [
                 str(derivative_root / "**" / "*_bold.dtseries.nii"),
+                str(derivative_root / "**" / "*desc-preproc_bold.nii*"),
                 str(derivative_root / "**" / "*space-MNI152NLin*_desc-preproc_bold.nii*"),
                 str(derivative_root / "**" / "*space-MNI152NLin*_boldref.nii*"),
                 str(derivative_root / "**" / "*space-MNI152NLin*_desc-brain_mask.nii*"),
@@ -899,10 +923,18 @@ def _audit_subject(
         }
         if xcpd_status.get("input_format"):
             payload["xcpd"]["input_format"] = xcpd_status["input_format"]
+        payload["xcpd_warning_codes"] = list(xcpd_status.get("warning_codes") or [])
+        payload["xcpd_warning_details"] = _xcpd_warning_details(subject, xcpd_status)
         payload["xcpd_min_time_warning_details"] = _collect_xcpd_min_time_warning_details(
             subject,
             bold_candidates,
-            request.xcpd_min_time,
+            request,
+            remote_probe,
+        )
+        payload["xcpd_post_censor_time_unestimated_details"] = _collect_xcpd_post_censor_time_unestimated_details(
+            subject,
+            bold_candidates,
+            request,
             remote_probe,
         )
     return payload
@@ -973,10 +1005,18 @@ def _audit_xcpd_derivative_subject(
     }
     if xcpd_status.get("input_format"):
         payload["xcpd"]["input_format"] = xcpd_status["input_format"]
+    payload["xcpd_warning_codes"] = list(xcpd_status.get("warning_codes") or [])
+    payload["xcpd_warning_details"] = _xcpd_warning_details(subject, xcpd_status)
     payload["xcpd_min_time_warning_details"] = _collect_xcpd_min_time_warning_details(
         subject,
         bold_derivatives,
-        request.xcpd_min_time,
+        request,
+        remote_probe,
+    )
+    payload["xcpd_post_censor_time_unestimated_details"] = _collect_xcpd_post_censor_time_unestimated_details(
+        subject,
+        bold_derivatives,
+        request,
         remote_probe,
     )
     return payload
@@ -985,39 +1025,248 @@ def _audit_xcpd_derivative_subject(
 def _collect_xcpd_min_time_warning_details(
     subject: SubjectEntry,
     bold_candidates: list[Path],
-    min_time_seconds: int,
+    request: RequestConfig,
     probe: dict[str, Any] | None = None,
 ) -> list[str]:
+    min_time_seconds = request.xcpd_min_time
     if min_time_seconds <= 0:
         return []
     details: list[str] = []
     for path in bold_candidates:
-        metadata = _path_image_metadata(path, probe)
-        duration_seconds = _bold_duration_seconds(metadata)
+        estimate = _xcpd_post_censor_duration_estimate(path, request, probe)
+        if estimate["status"] != "estimated":
+            continue
+        duration_seconds = estimate["usable_seconds"]
         if duration_seconds is None or duration_seconds >= float(min_time_seconds):
+            continue
+        fd_thresh = estimate["fd_thresh"]
+        tr_seconds = estimate["tr_seconds"]
+        kept = estimate["kept_volumes"]
+        total = estimate["total_volumes"]
+        detail_prefix = subject.subject_label
+        if subject.session_label:
+            detail_prefix = f"{detail_prefix} {subject.session_label}"
+        detail = (
+            f"{detail_prefix}: estimated {duration_seconds:g}s remains after FD censoring for {path.name}, "
+            f"below XCP-D min-time {min_time_seconds}s; fd_thresh={fd_thresh:g}, TR={tr_seconds:g}s, "
+            f"kept={kept}/{total} volumes"
+        )
+        motion_filter = _motion_filter_detail(request)
+        if motion_filter:
+            detail = f"{detail}, {motion_filter}, estimate"
+        details.append(f"{detail}.")
+    return _dedupe(details)
+
+
+def _collect_xcpd_post_censor_time_unestimated_details(
+    subject: SubjectEntry,
+    bold_candidates: list[Path],
+    request: RequestConfig,
+    probe: dict[str, Any] | None = None,
+) -> list[str]:
+    if request.xcpd_min_time <= 0:
+        return []
+    details: list[str] = []
+    for path in bold_candidates:
+        estimate = _xcpd_post_censor_duration_estimate(path, request, probe)
+        if estimate["status"] == "estimated":
             continue
         detail_prefix = subject.subject_label
         if subject.session_label:
             detail_prefix = f"{detail_prefix} {subject.session_label}"
-        details.append(
-            f"{detail_prefix}: {path.name} is {duration_seconds:g}s, below XCP-D min-time {min_time_seconds}s."
-        )
+        details.append(f"{detail_prefix}: cannot estimate post-censor usable time for {path.name}: {estimate['reason']}.")
     return _dedupe(details)
 
 
+def _xcpd_post_censor_duration_estimate(
+    bold_path: Path,
+    request: RequestConfig,
+    probe: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    metadata = _path_image_metadata(bold_path, probe)
+    raw_duration = _bold_duration_seconds(metadata)
+    tr_seconds = _bold_tr_seconds(metadata)
+    total_volumes = _bold_timepoints(metadata)
+    if raw_duration is None or tr_seconds is None or total_volumes is None:
+        return {"status": "unestimated", "reason": "missing TR or BOLD timepoints"}
+    fd_thresh = _resolve_xcpd_fd_thresh(request)
+    if fd_thresh is None:
+        return {"status": "unestimated", "reason": "unknown fd_thresh"}
+    if fd_thresh <= 0:
+        return {
+            "status": "estimated",
+            "usable_seconds": raw_duration,
+            "tr_seconds": tr_seconds,
+            "fd_thresh": fd_thresh,
+            "kept_volumes": total_volumes,
+            "total_volumes": total_volumes,
+        }
+    confounds_path = _matching_confounds_tsv(bold_path, probe)
+    if confounds_path is None:
+        return {"status": "unestimated", "reason": "missing confounds TSV"}
+    confounds = _read_confounds_tsv(confounds_path, request.remote_host, probe)
+    if not confounds:
+        return {"status": "unestimated", "reason": "missing confounds TSV"}
+    fd_values: list[float | None]
+    if request.xcpd_motion_filter_type and request.xcpd_motion_filter_type != "none":
+        motion_values = _motion_columns(confounds)
+        if motion_values is None:
+            return {"status": "unestimated", "reason": "missing motion columns"}
+        fd_values = _fd_from_motion(motion_values)
+    else:
+        fd_values = _confound_column(confounds, "framewise_displacement")
+        if fd_values is None:
+            return {"status": "unestimated", "reason": "missing framewise_displacement"}
+    total = min(total_volumes, len(fd_values))
+    if total <= 0:
+        return {"status": "unestimated", "reason": "missing framewise_displacement"}
+    kept = sum(1 for value in fd_values[:total] if value is not None and value <= fd_thresh)
+    return {
+        "status": "estimated",
+        "usable_seconds": round(kept * tr_seconds, 2),
+        "tr_seconds": tr_seconds,
+        "fd_thresh": fd_thresh,
+        "kept_volumes": kept,
+        "total_volumes": total,
+    }
+
+
 def _bold_duration_seconds(metadata: dict[str, Any] | None) -> float | None:
+    tr_seconds = _bold_tr_seconds(metadata)
+    timepoint_count = _bold_timepoints(metadata)
+    if tr_seconds is None or timepoint_count is None:
+        return None
+    return round(tr_seconds * timepoint_count, 2)
+
+
+def _bold_tr_seconds(metadata: dict[str, Any] | None) -> float | None:
     if not isinstance(metadata, dict):
         return None
     repetition_time = metadata.get("repetition_time")
-    timepoints = metadata.get("timepoints")
     try:
         tr_seconds = float(repetition_time)
-        timepoint_count = int(timepoints)
+    except (TypeError, ValueError):
+        zooms = metadata.get("zooms")
+        if not isinstance(zooms, list) or len(zooms) < 4:
+            return None
+        try:
+            tr_seconds = float(zooms[3])
+        except (TypeError, ValueError):
+            return None
+    if tr_seconds <= 0:
+        return None
+    return tr_seconds
+
+
+def _bold_timepoints(metadata: dict[str, Any] | None) -> int | None:
+    if not isinstance(metadata, dict):
+        return None
+    try:
+        timepoint_count = int(metadata.get("timepoints"))
     except (TypeError, ValueError):
         return None
-    if tr_seconds <= 0 or timepoint_count <= 0:
+    return timepoint_count if timepoint_count > 0 else None
+
+
+def _resolve_xcpd_fd_thresh(request: RequestConfig) -> float | None:
+    raw = request.xcpd_custom_args.get("fd_thresh", DEFAULT_XCPD_FD_THRESH)
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
         return None
-    return round(tr_seconds * timepoint_count, 2)
+
+
+def _matching_confounds_tsv(bold_path: Path, probe: dict[str, Any] | None = None) -> RequestPath | None:
+    candidates: list[RequestPath]
+    if probe is None:
+        candidates = sorted(bold_path.parent.glob("*desc-confounds_timeseries.tsv"))
+    else:
+        candidates = [path for path in _remote_glob_values(probe) if path.parent == bold_path.parent and _is_confounds_tsv(path)]
+    if not candidates:
+        return None
+    bold_entities = _bids_entities(bold_path.name)
+    matching = [
+        path
+        for path in candidates
+        if _confounds_match_bold(_bids_entities(path.name), bold_entities)
+    ]
+    if len(matching) == 1:
+        return matching[0]
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def _confounds_match_bold(confounds_entities: dict[str, str], bold_entities: dict[str, str]) -> bool:
+    for key in ("sub", "ses", "task", "acq", "ce", "rec", "dir", "run", "echo"):
+        if confounds_entities.get(key) != bold_entities.get(key):
+            return False
+    return True
+
+
+def _read_confounds_tsv(path: RequestPath, remote_host: str | None, probe: dict[str, Any] | None) -> list[dict[str, str]]:
+    if probe is None:
+        try:
+            text = Path(path).read_text(encoding="utf-8")
+        except OSError:
+            return []
+    else:
+        text = _probe_text(probe, path)
+        if not text:
+            try:
+                text = read_text(path, remote_host)
+            except Exception:
+                return []
+    return list(csv.DictReader(io.StringIO(text), delimiter="\t"))
+
+
+def _confound_column(rows: list[dict[str, str]], name: str) -> list[float | None] | None:
+    if not rows or name not in rows[0]:
+        return None
+    return [_parse_optional_float(row.get(name)) for row in rows]
+
+
+def _motion_columns(rows: list[dict[str, str]]) -> list[tuple[float, float, float, float, float, float]] | None:
+    if not rows or any(name not in rows[0] for name in MOTION_COLUMNS):
+        return None
+    values = []
+    for row in rows:
+        parsed = [_parse_optional_float(row.get(name)) for name in MOTION_COLUMNS]
+        if any(value is None for value in parsed):
+            return None
+        values.append(tuple(float(value) for value in parsed))
+    return values
+
+
+def _fd_from_motion(rows: list[tuple[float, float, float, float, float, float]]) -> list[float]:
+    if not rows:
+        return []
+    fd = [0.0]
+    for previous, current in zip(rows, rows[1:]):
+        translation = sum(abs(current[index] - previous[index]) for index in range(3))
+        rotation = sum(abs(current[index] - previous[index]) for index in range(3, 6))
+        fd.append(translation + DEFAULT_XCPD_HEAD_RADIUS_MM * rotation)
+    return fd
+
+
+def _parse_optional_float(value: str | None) -> float | None:
+    if value is None or value == "" or value.lower() in {"n/a", "nan"}:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def _motion_filter_detail(request: RequestConfig) -> str:
+    if not request.xcpd_motion_filter_type or request.xcpd_motion_filter_type == "none":
+        return ""
+    parts = [f"motion_filter={request.xcpd_motion_filter_type}"]
+    if request.xcpd_band_stop_min is not None:
+        parts.append(f"band_stop_min={request.xcpd_band_stop_min:g}")
+    if request.xcpd_band_stop_max is not None:
+        parts.append(f"band_stop_max={request.xcpd_band_stop_max:g}")
+    if request.xcpd_motion_filter_order is not None:
+        parts.append(f"order={request.xcpd_motion_filter_order}")
+    return " ".join(parts)
 
 def _check_candidates(paths: list[Path], dataset_flags: list[str], remote_host: str | None = None) -> dict[str, Any]:
     """Check whether candidate files exist and are readable.
@@ -1190,7 +1439,7 @@ def _xcpd_input_status(
         paths = filtered_paths
 
     if xcpd_mode == "nichart":
-        ready = _xcpd_derivative_set_ready(
+        nifti_set_ready = _xcpd_derivative_set_ready(
             paths,
             required=(
                 _is_mni_preproc_bold,
@@ -1201,9 +1450,11 @@ def _xcpd_input_status(
             ),
         )
         return {
-            "ready": ready,
-            "reason_codes": [] if ready else [XCPD_NICHART_NIFTI_REASON],
-            "input_format": "nifti" if ready else None,
+            # NiChart NIfTI matching is advisory; missing or ambiguous matches warn but do not block.
+            "ready": True,
+            "reason_codes": [],
+            "warning_codes": [] if nifti_set_ready else [XCPD_NICHART_NIFTI_REASON],
+            "input_format": "nifti" if nifti_set_ready else None,
         }
 
     ready = _xcpd_derivative_set_ready(
@@ -1221,6 +1472,21 @@ def _xcpd_input_status(
     }
 
 
+def _xcpd_warning_details(subject: SubjectEntry, xcpd_status: dict[str, Any]) -> list[str]:
+    warning_codes = set(xcpd_status.get("warning_codes") or [])
+    if XCPD_NICHART_NIFTI_REASON not in warning_codes:
+        return []
+    detail_prefix = subject.subject_label
+    if subject.session_label:
+        detail_prefix = f"{detail_prefix} {subject.session_label}"
+    return [
+        (
+            f"{detail_prefix}: NiChart NIfTI derivatives were not confidently matched as one coherent "
+            "fMRIPrep derivative set; mixed MNI spaces can make this audit check conservative."
+        )
+    ]
+
+
 def _filter_xcpd_task_paths(paths: list[RequestPath], task_ids: list[str]) -> list[RequestPath]:
     wanted = {value.removeprefix("task-") for value in task_ids}
     filtered: list[RequestPath] = []
@@ -1234,7 +1500,19 @@ def _filter_xcpd_task_paths(paths: list[RequestPath], task_ids: list[str]) -> li
 def _xcpd_subject_derivative_paths(subject_dir: RequestPath) -> list[RequestPath]:
     if not isinstance(subject_dir, Path) or not subject_dir.exists():
         return []
-    return [path for path in sorted(subject_dir.rglob("*")) if path.is_file()]
+    patterns = (
+        "**/*_bold.dtseries.nii",
+        "**/*desc-preproc_bold.nii*",
+        "**/*space-MNI152NLin*_desc-preproc_bold.nii*",
+        "**/*space-MNI152NLin*_boldref.nii*",
+        "**/*space-MNI152NLin*_desc-brain_mask.nii*",
+        "**/*desc-confounds_timeseries.tsv",
+        "**/*desc-confounds_timeseries.json",
+    )
+    paths: set[Path] = set()
+    for pattern in patterns:
+        paths.update(path for path in subject_dir.glob(pattern) if path.is_file())
+    return sorted(paths)
 
 
 def _xcpd_derivative_set_ready(
@@ -1248,10 +1526,28 @@ def _xcpd_derivative_set_ready(
         if key:
             groups.setdefault(key, []).append(path)
     for group in groups.values():
-        if not all(any(predicate(path) for path in group) for predicate in required):
-            continue
         relevant = [path for path in group if any(predicate(path) for predicate in required)]
-        if _spatial_entities_coherent(relevant):
+        if not relevant:
+            continue
+        if _coherent_required_subset_ready(relevant, required):
+            return True
+    return False
+
+
+def _coherent_required_subset_ready(
+    paths: list[RequestPath],
+    required: tuple[Callable[[RequestPath], bool], ...],
+) -> bool:
+    spatial_keys = _spatial_entity_keys(paths)
+    if not spatial_keys:
+        return all(any(predicate(path) for path in paths) for predicate in required)
+    for spatial_key in spatial_keys:
+        subset = [
+            path
+            for path in paths
+            if (key := _spatial_entity_key(path)) is None or key == spatial_key
+        ]
+        if all(any(predicate(path) for path in subset) for predicate in required):
             return True
     return False
 
@@ -1266,16 +1562,22 @@ def _bids_run_key(name: str) -> tuple[tuple[str, str], ...]:
 
 
 def _spatial_entities_coherent(paths: list[RequestPath]) -> bool:
-    spatial_keys = {
-        tuple(
-            (key, value)
-            for key in ("space", "res", "den")
-            if (value := _bids_entities(path.name).get(key)) is not None
-        )
-        for path in paths
-        if _bids_entities(path.name).get("space") is not None
-    }
-    return len(spatial_keys) <= 1
+    return len(_spatial_entity_keys(paths)) <= 1
+
+
+def _spatial_entity_keys(paths: list[RequestPath]) -> set[tuple[tuple[str, str], ...]]:
+    return {key for path in paths if (key := _spatial_entity_key(path)) is not None}
+
+
+def _spatial_entity_key(path: RequestPath) -> tuple[tuple[str, str], ...] | None:
+    entities = _bids_entities(path.name)
+    if entities.get("space") is None:
+        return None
+    return tuple(
+        (key, value)
+        for key in ("space", "res", "den")
+        if (value := entities.get(key)) is not None
+    )
 
 
 def _bids_entities(name: str) -> dict[str, str]:

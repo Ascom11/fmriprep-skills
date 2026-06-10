@@ -30,7 +30,7 @@ DEFAULT_FMRIPREP_OUTPUT_SPACES = ("MNI152NLin2009cAsym:res-2", "MNI152NLin6Asym:
 DEFAULT_FMRIPREP_NO_RECONALL_OUTPUT_SPACES = ("MNI152NLin2009cAsym:res-2",)
 DEFAULT_FMRIPREP_CIFTI_OUTPUT = "91k"
 DEFAULT_FMRIPREP_IMAGE = "docker://nipreps/fmriprep:25.2.5"
-DEFAULT_XCPD_IMAGE = "docker://pennlinc/xcp_d:26.0.2"
+DEFAULT_XCPD_IMAGE = "docker://pennlinc/xcp_d:26.1.0"
 RequestPath: TypeAlias = Path | PurePosixPath
 REMOTE_FILESYSTEM_FIELDS: tuple[str, ...] = (
     "bids_root",

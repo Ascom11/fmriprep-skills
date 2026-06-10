@@ -769,11 +769,11 @@ def _compact_probe_error(text: str) -> str:
 
 def _detect_derivatives_storage(request: RequestConfig) -> dict[str, Any]:
     if request.remote_host is not None:
-        return {"filesystem": None, "warnings": [], "warning_details": []}
+        return {"filesystem": None, "xcpd_work_filesystem": None, "warnings": [], "warning_details": []}
     try:
         output_root = request.resolve_output_root()
     except ValueError:
-        return {"filesystem": None, "warnings": [], "warning_details": []}
+        return {"filesystem": None, "xcpd_work_filesystem": None, "warnings": [], "warning_details": []}
 
     target = describe_storage_target(
         output_root,
@@ -786,8 +786,20 @@ def _detect_derivatives_storage(request: RequestConfig) -> dict[str, Any]:
     if filesystem and target.get("host_drive") and filesystem.lower() == "exfat":
         warnings.append("derivatives_storage_exfat_symlink_risk")
         warning_details.append(_derivatives_exfat_detail(target, filesystem))
+    xcpd_work_filesystem = None
+    if request.target == "xcpd":
+        work_target = describe_storage_target(
+            request.resolve_work_root(),
+            wsl_vhdx_path=request.wsl_vhdx_path,
+            windows_host_drive=request.windows_host_drive,
+        )
+        xcpd_work_filesystem = str(work_target.get("filesystem") or "").strip() or None
+        if xcpd_work_filesystem and work_target.get("host_drive") and xcpd_work_filesystem.lower() == "exfat":
+            warnings.append("xcpd_work_filesystem_symlink_risk")
+            warning_details.append(_xcpd_work_exfat_detail(work_target, xcpd_work_filesystem))
     return {
         "filesystem": filesystem,
+        "xcpd_work_filesystem": xcpd_work_filesystem,
         "warnings": warnings,
         "warning_details": warning_details,
     }
@@ -799,6 +811,16 @@ def _derivatives_exfat_detail(target: dict[str, Any], filesystem: str) -> str:
     return (
         f"Derivatives target {path} resolves to Windows volume {volume} with filesystem {filesystem}; "
         "FreeSurfer symlink creation can fail there. Prefer NTFS or a native Linux filesystem."
+    )
+
+
+def _xcpd_work_exfat_detail(target: dict[str, Any], filesystem: str) -> str:
+    path = str(target.get("path") or "work_root")
+    volume = str(target.get("volume_label") or f"{target.get('host_drive') or 'unknown'}:")
+    return (
+        f"XCP-D work directory {path} resolves to Windows volume {volume} with filesystem {filesystem}; "
+        "XCP-D creates symlinks inside /work, and exFAT-backed Docker bind mounts may fail with PermissionError. "
+        "Move --work-root to NTFS, WSL ext4, or native Linux storage."
     )
 
 

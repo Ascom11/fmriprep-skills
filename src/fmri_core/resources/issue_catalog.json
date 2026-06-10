@@ -665,8 +665,30 @@
       "scope": "xcpd",
       "category": "warning",
       "severity": 2,
-      "meaning": "Some BOLD runs are shorter than the XCP-D min-time threshold.",
-      "advice": "Review whether those runs should be excluded from XCP-D.",
+      "meaning": "Some BOLD runs are estimated to have less usable data than the XCP-D min-time threshold after FD censoring.",
+      "advice": "Review whether those runs should be excluded from XCP-D or use a less aggressive censoring threshold.",
+      "missing_required": null,
+      "reportable": true,
+      "legacy": false
+    },
+    {
+      "code": "xcpd_post_censor_time_unestimated",
+      "scope": "xcpd",
+      "category": "warning",
+      "severity": 2,
+      "meaning": "Post-censor usable time could not be estimated for one or more XCP-D inputs.",
+      "advice": "Review the fMRIPrep confounds TSV, BOLD TR metadata, required motion columns, FD threshold or custom fd_thresh, and motion filter settings before relying on the min-time precheck.",
+      "missing_required": null,
+      "reportable": true,
+      "legacy": false
+    },
+    {
+      "code": "xcpd_work_filesystem_symlink_risk",
+      "scope": "xcpd",
+      "category": "warning",
+      "severity": 4,
+      "meaning": "XCP-D creates symlinks inside /work, and the selected work directory is on a filesystem that may not support symlinks reliably.",
+      "advice": "exFAT-backed Docker bind mounts may fail with PermissionError; move --work-root to NTFS, WSL ext4, or native Linux storage before running XCP-D when possible.",
       "missing_required": null,
       "reportable": true,
       "legacy": false
@@ -707,10 +729,10 @@
     {
       "code": "missing_xcpd_nichart_nifti_derivatives",
       "scope": "xcpd",
-      "category": "subject-exclusion",
+      "category": "warning",
       "severity": 4,
-      "meaning": "NiChart-mode XCP-D cannot find the required NIfTI derivatives from fMRIPrep.",
-      "advice": "Run or restore the required fMRIPrep NIfTI outputs before running NiChart-mode XCP-D for this subject.",
+      "meaning": "NiChart-mode XCP-D audit could not confidently match a coherent NIfTI derivative set from fMRIPrep.",
+      "advice": "Review the fMRIPrep MNI NIfTI derivatives, especially boldref, brain mask, and confounds files. Mixed MNI spaces can make the audit conservative, but this warning does not block execution.",
       "missing_required": null,
       "reportable": true,
       "legacy": false

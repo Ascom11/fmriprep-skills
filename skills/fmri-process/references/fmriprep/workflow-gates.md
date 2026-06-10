@@ -55,17 +55,13 @@ After successful `run-fmriprep`, the workflow stops in `$fmri-process`.
 Post-run inspection and XCP-D require an explicit follow-up route.
 
 Inside internal `run-fmriprep`, the CLI-managed per-subject
-`fmriprep-container-probe` runs inside each local subject process, remote-local
-process, or Slurm array task before true fMRIPrep starts. It is not a shared
-`pre_step`; failure is an execution failure, not a runtime-audit blocker.
+`fmriprep-container-probe` runs before true fMRIPrep; failure is an execution
+failure, not a runtime-audit blocker.
 
 ## Execution Failure Output
 
-Before true fMRIPrep starts, the CLI-managed per-subject
-`fmriprep-container-probe` runs inside each local subject process, remote-local
-process, or Slurm array task. It is not a shared `pre_step`. If the probe
-fails, treat it as an execution failure or pre-start subject failure reported
-with the subject execution summaries, not as a runtime-audit blocker.
+If the per-subject `fmriprep-container-probe` fails, treat it as a pre-start
+execution failure in subject summaries, not as a runtime-audit blocker.
 
 When execution reaches internal `run-fmriprep` and fails, stdout still contains
 one valid JSON document and the process may exit nonzero. Do not parse stderr

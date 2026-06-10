@@ -3,7 +3,7 @@
 语言：[English](README.md) | 中文
 
 > [!IMPORTANT]
-> **News（2026.6.8）：XCP-D 26.0.2 可视化报告问题。** 当前默认的 XCP-D 镜像版本是 `26.0.2`。处理完成后的可视化报告阶段可能报错：`TypeError: _warn() got an unexpected keyword argument 'skip_file_prefixes'`，常见位置是 `plot_slices_T1/T2` / brainsprite。参考这个 [Neurostars 讨论](https://neurostars.org/t/xcp-d-26-0-2-fails-during-brainsprite-plot-slices-t1-t2/36172)。后续的 XCP-D `26.0.3` 已经修复，但截至 `2026.6.8`，Docker Hub 上的 `pennlinc/xcp_d:latest` 仍然指向 `26.0.2`，所以不要默认把 `latest` 当成已经修复的镜像。
+> **News（2026.6.10）：XCP-D 默认镜像与 harness trace 更新。** 当前默认 XCP-D 镜像是 `pennlinc/xcp_d:26.1.0`。Windows 原生环境跑 XCP-D 仍然更容易出问题；能用 WSL、Linux 或服务器时，建议优先用这些环境。除非确实需要旧版本，否则不建议回退到 `26.0.2`，因为旧版本可能在 visual report 阶段报错；相关问题见 [Neurostars 讨论](https://neurostars.org/t/xcp-d-26-0-2-fails-during-brainsprite-plot-slices-t1-t2/36172)。
 
 本项目包含两个 skills：`$fmri-process`、`$fmri-followup`。核心目的：**让不懂代码、第一次处理 BIDS 数据集的初学者少踩坑，尽可能一次就跑通**。
 
@@ -65,20 +65,26 @@ $fmri-followup 监测进度、日志、崩溃记录和输出完整性
 ### 安装依赖
 
 ```bash
-git clone https://github.com/Ascom11/fmriprep-skills.git
-cd fmriprep-skills
+if [ -d fmriprep-skills/.git ]; then
+  cd fmriprep-skills
+  git pull --ff-only
+else
+  git clone https://github.com/Ascom11/fmriprep-skills.git
+  cd fmriprep-skills
+fi
 python -m pip install -e .
 python -m pip show fmri-proc-tools
 ```
 
 ### 复制 skills
 
-在 `fmriprep-skills` 仓库根目录运行下面的命令。以后更新仓库后可以重新执行；
-目标 skill 目录里的同名文件会被新版覆盖。
+在 `fmriprep-skills` 仓库根目录运行下面的命令。先删除旧 skill 目录，避免已经
+删除或改名的旧文件继续留在安装位置。
 
 Linux、macOS、WSL 或远程 shell 上的 Codex：
 
 ```bash
+rm -rf ~/.codex/skills/fmri-process ~/.codex/skills/fmri-followup
 mkdir -p ~/.codex/skills/fmri-process ~/.codex/skills/fmri-followup
 cp -a skills/fmri-process/. ~/.codex/skills/fmri-process/
 cp -a skills/fmri-followup/. ~/.codex/skills/fmri-followup/
@@ -87,6 +93,7 @@ cp -a skills/fmri-followup/. ~/.codex/skills/fmri-followup/
 Linux、macOS、WSL 或远程 shell 上的 Claude 或其他基于 Claude Code 的 agents：
 
 ```bash
+rm -rf ~/.claude/skills/fmri-process ~/.claude/skills/fmri-followup
 mkdir -p ~/.claude/skills/fmri-process ~/.claude/skills/fmri-followup
 cp -a skills/fmri-process/. ~/.claude/skills/fmri-process/
 cp -a skills/fmri-followup/. ~/.claude/skills/fmri-followup/
@@ -95,6 +102,7 @@ cp -a skills/fmri-followup/. ~/.claude/skills/fmri-followup/
 Windows PowerShell 上的 Codex：
 
 ```powershell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.codex\skills\fmri-process", "$env:USERPROFILE\.codex\skills\fmri-followup" -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\skills\fmri-process", "$env:USERPROFILE\.codex\skills\fmri-followup" | Out-Null
 Copy-Item -Recurse -Force .\skills\fmri-process\* "$env:USERPROFILE\.codex\skills\fmri-process\"
 Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.codex\skills\fmri-followup\"
@@ -103,6 +111,7 @@ Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.codex\skil
 Windows PowerShell 上的 Claude 或其他基于 Claude Code 的 agents：
 
 ```powershell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\skills\fmri-process", "$env:USERPROFILE\.claude\skills\fmri-followup" -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills\fmri-process", "$env:USERPROFILE\.claude\skills\fmri-followup" | Out-Null
 Copy-Item -Recurse -Force .\skills\fmri-process\* "$env:USERPROFILE\.claude\skills\fmri-process\"
 Copy-Item -Recurse -Force .\skills\fmri-followup\* "$env:USERPROFILE\.claude\skills\fmri-followup\"
@@ -306,7 +315,7 @@ docker://nipreps/fmriprep:25.2.5
 默认 XCP-D 镜像版本：
 
 ```text
-docker://pennlinc/xcp_d:26.0.2
+docker://pennlinc/xcp_d:26.1.0
 ```
 
 默认 fMRIPrep 输出空间：

@@ -405,6 +405,7 @@ def inspect_path(raw_path):
                 image_metadata = None
     return {
         "exists": exists,
+        "is_dir": path.is_dir() if exists else False,
         "is_symlink": path.is_symlink(),
         "readable": exists and os.access(path, os.R_OK),
         "size_bytes": size_bytes,

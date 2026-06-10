@@ -19,6 +19,8 @@ saved artifact selection, or execution.
 4. Read [xcpd-audit.md](xcpd-audit.md) before `xcpd-audit`, unless the user
    explicitly asks to reuse saved XCP-D artifacts. By default, run
    `xcpd-audit`, report the result, and pause.
+   When audit artifacts or payload findings need a user-facing report, read
+   [../common/audit-report.md](../common/audit-report.md).
 5. If runtime prepare is needed, report the listed XCP-D requirements and ask
    for current-turn prepare approval. Prepare only after that approval, then
    run `prepare-probe --target xcpd`. When `prepare-probe` reports ready,
@@ -66,4 +68,6 @@ saved artifact selection, or execution.
   rejected/deferred surfaces.
 - [artifacts.md](artifacts.md): artifact names, reuse keys, subject source.
 - [xcpd-audit.md](xcpd-audit.md): fresh audit command.
+- [../common/audit-report.md](../common/audit-report.md): user-facing audit
+  report shape.
 - [run-xcpd.md](run-xcpd.md): saved-artifact execution command.

@@ -24,13 +24,21 @@ def load_image_metadata(path: str | Path) -> dict[str, Any]:
     image_path = Path(path)
     image = nib.load(str(image_path))
     shape = [int(value) for value in image.shape]
-    zooms = [float(value) for value in image.header.get_zooms()[: len(shape)]]
     data_dtype = image.get_data_dtype()
     bitpix = int(getattr(data_dtype, "itemsize", 0) * 8)
-    timepoints = int(shape[3]) if len(shape) >= 4 else 1
+    cifti_series = _cifti_series_metadata(image, shape)
+    if cifti_series is None:
+        zooms = [float(value) for value in image.header.get_zooms()[: len(shape)]]
+        timepoints = int(shape[3]) if len(shape) >= 4 else 1
+    else:
+        zooms = []
+        timepoints = cifti_series["timepoints"]
     assumptions: list[str] = []
 
-    repetition_time = _read_repetition_time(image_path)
+    if cifti_series is None:
+        repetition_time = _read_repetition_time(image_path)
+    else:
+        repetition_time = cifti_series["repetition_time"]
     if repetition_time is None:
         assumptions.append("assumption_missing_sidecar_or_tr")
 
@@ -45,6 +53,28 @@ def load_image_metadata(path: str | Path) -> dict[str, Any]:
         "repetition_time": repetition_time,
         "assumptions": assumptions,
     }
+
+
+def _cifti_series_metadata(image: Any, shape: list[int]) -> dict[str, Any] | None:
+    """Read CIFTI time axis metadata when present."""
+    get_axis = getattr(getattr(image, "header", None), "get_axis", None)
+    if not callable(get_axis):
+        return None
+    for axis_index in range(len(shape)):
+        try:
+            axis = get_axis(axis_index)
+        except Exception:
+            continue
+        if axis.__class__.__name__ != "SeriesAxis":
+            continue
+        try:
+            timepoints = int(axis.size)
+            repetition_time = float(axis.step)
+        except (TypeError, ValueError):
+            return None
+        if timepoints > 0 and repetition_time > 0:
+            return {"timepoints": timepoints, "repetition_time": repetition_time}
+    return None
 
 
 def _read_repetition_time(image_path: Path) -> float | None:

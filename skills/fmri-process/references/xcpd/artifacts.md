@@ -76,9 +76,9 @@ internally. `runnable_subjects` is the fMRIPrep execution path field, not an
 agent-facing `run-xcpd` consumption field.
 
 Dataset readiness is mode-specific. `abcd` requires fsLR/CIFTI fMRIPrep
-derivatives plus confounds TSV/JSON. `nichart` accepts MNI-space NIfTI fMRIPrep
-derivatives only when the preprocessed BOLD, boldref, brain mask, and confounds
-TSV/JSON are present for the same coherent BOLD run.
+derivatives plus confounds TSV/JSON. `nichart` readiness checks one coherent
+NIfTI derivative set; mismatch is advisory in audit output, not a saved
+execution subject blocker.
 
 If the source fMRIPrep audit used `--fs-no-reconall`, treat it as volume-only:
 do not assume fsLR/CIFTI derivatives exist. `nichart` may reuse the source
@@ -103,7 +103,7 @@ The CLI validates the saved execution subject scope from archived artifacts.
 - non-sessionized subjects must fail clearly when `xcpd-audit --session` is
   provided.
 - If `--xcpd-image` is omitted, the CLI uses
-  `docker://pennlinc/xcp_d:26.0.2` as the tested default source.
+  `docker://pennlinc/xcp_d:26.1.0` as the tested default source.
 - If `--xcpd-min-time` is omitted, the wrapper default is mode-specific:
   `abcd=240` and `nichart=0`.
 - If motion-filter arguments are omitted, the wrapper default for `abcd` is

@@ -20,7 +20,7 @@ WORKDIR_MIN_MULTIPLIER = 3.0
 WORKDIR_MAX_MULTIPLIER = 4.0
 XCPD_WORKDIR_MULTIPLIER = 3.0
 NIFTI_GZ_ESTIMATE_MULTIPLIER = 0.85
-NICHART_DENOISED_BOLD_GZ_ESTIMATE_MULTIPLIER = 0.35
+NICHART_DENOISED_BOLD_GZ_ESTIMATE_MULTIPLIER = 0.5
 MNI152NLIN6ASYM_RES2_SHAPE = (91, 109, 91)
 MNI152NLIN6ASYM_RES1_SHAPE = (182, 218, 182)
 MNI152NLIN2009CASYM_RES1_SHAPE = (193, 229, 193)
@@ -497,8 +497,11 @@ def _estimate_item(subject_plan: dict[str, Any], request: RequestConfig) -> dict
     pipeline = subject_plan["pipeline"]
     session_audits = list(subject_audit.get("sessions") or [])
     input_records = _collect_subject_input_records(session_audits)
+    xcpd_input_format = _xcpd_input_format(subject_audit) if pipeline == "xcpd" else None
     t1_paths = [Path(record["path"]) for record in input_records["t1w"]]
     bold_records = [] if pipeline == "fmriprep" and request.anat_only else input_records["bold"]
+    if pipeline == "xcpd":
+        bold_records = _xcpd_storage_bold_records(bold_records, xcpd_input_format)
     bold_paths = [Path(record["path"]) for record in bold_records]
     allow_local_fallback = request.remote_host is None
     anat_metadata = _resolve_image_metadata_list(input_records["t1w"], t1_paths, allow_local_fallback=allow_local_fallback)
@@ -534,6 +537,7 @@ def _estimate_item(subject_plan: dict[str, Any], request: RequestConfig) -> dict
         pipeline,
         request.xcpd_mode,
         bold_metadata,
+        xcpd_input_format,
     )
     estimated_fmriprep_strict_derivatives_gb = _inventory_bytes_gb(fmriprep_items)
     estimated_fmriprep_modeled_derivatives_gb = _inventory_modeled_bytes_gb(fmriprep_items)
@@ -846,7 +850,8 @@ def _instantiate_inventory_item(
         atlas_name=atlas_name,
     )
     if resolved_bytes is not None and path_pattern.lower().endswith(".nii.gz"):
-        multiplier = float(item_spec.get("compression_multiplier", NIFTI_GZ_ESTIMATE_MULTIPLIER))
+        default_multiplier = 1.0 if product == "xcpd" else NIFTI_GZ_ESTIMATE_MULTIPLIER
+        multiplier = float(item_spec.get("compression_multiplier", default_multiplier))
         resolved_bytes = int(resolved_bytes * multiplier)
     unresolved_reason = item_spec.get("unresolved_reason")
     estimate_mode = item_spec.get("estimate_mode") or item_spec.get("estimation_mode", "unresolved")
@@ -1073,15 +1078,22 @@ def _xcpd_derivative_inventory(
     pipeline: PipelineStepName,
     xcpd_mode: str,
     bold_metadata: list[dict[str, Any] | None],
+    input_format: str | None = None,
 ) -> list[dict[str, Any]]:
     if pipeline == "fmriprep":
         return []
+    if not any(metadata is not None for metadata in bold_metadata):
+        return []
     inventory_spec = _load_inventory_spec()["xcpd"]
+    base_item_specs = _xcpd_mode_item_specs(inventory_spec["items"], xcpd_mode)
     if xcpd_mode == "abcd":
-        item_specs = inventory_spec["items"] + _xcpd_atlas_item_specs(inventory_spec["atlas_items"], xcpd_mode)
+        item_specs = _xcpd_format_item_specs(
+            base_item_specs + _xcpd_atlas_item_specs(inventory_spec["atlas_items"], xcpd_mode),
+            input_format,
+        )
         atlas_names = inventory_spec["default_atlases"]
     else:
-        item_specs = _nichart_item_specs(inventory_spec["items"]) + _xcpd_atlas_item_specs(
+        item_specs = _nichart_item_specs(base_item_specs) + _xcpd_atlas_item_specs(
             inventory_spec["atlas_items"],
             xcpd_mode,
         )
@@ -1093,6 +1105,100 @@ def _xcpd_derivative_inventory(
         bold_metadata=bold_metadata,
         atlas_names=atlas_names,
     )
+
+
+def _xcpd_input_format(subject_audit: dict[str, Any]) -> str | None:
+    formats: list[str] = []
+    xcpd = subject_audit.get("xcpd") or {}
+    if xcpd.get("input_format"):
+        formats.append(str(xcpd["input_format"]))
+    for session in subject_audit.get("sessions") or []:
+        session_xcpd = session.get("xcpd") or {}
+        if session_xcpd.get("input_format"):
+            formats.append(str(session_xcpd["input_format"]))
+    normalized = _dedupe([value for value in formats if value in {"cifti", "nifti"}])
+    return normalized[0] if len(normalized) == 1 else None
+
+
+def _xcpd_storage_bold_records(records: list[dict[str, Any]], input_format: str | None) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for record in records:
+        key = _xcpd_logical_bold_key(str(record.get("path") or ""))
+        grouped.setdefault(key, []).append(record)
+
+    selected: list[dict[str, Any]] = []
+    for candidates in grouped.values():
+        preferred = candidates
+        if input_format == "cifti":
+            preferred = [record for record in candidates if _xcpd_record_is_cifti(record)] or candidates
+        elif input_format == "nifti":
+            preferred = [record for record in candidates if not _xcpd_record_is_cifti(record)] or candidates
+        selected.append(_xcpd_record_with_best_timing(preferred[0], candidates))
+    return selected
+
+
+def _xcpd_record_is_cifti(record: dict[str, Any]) -> bool:
+    path = str(record.get("path") or "")
+    return path.endswith((".dtseries.nii", ".dscalar.nii", ".ptseries.nii", ".pconn.nii", ".pscalar.nii"))
+
+
+def _xcpd_record_with_best_timing(
+    selected: dict[str, Any],
+    candidates: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if _xcpd_metadata_has_timing(selected.get("metadata")):
+        return selected
+    for candidate in candidates:
+        if _xcpd_metadata_has_timing(candidate.get("metadata")):
+            merged = dict(selected)
+            merged["metadata"] = candidate["metadata"]
+            return merged
+    return selected
+
+
+def _xcpd_metadata_has_timing(metadata: Any) -> bool:
+    if not isinstance(metadata, dict):
+        return False
+    try:
+        return int(metadata.get("timepoints") or 0) > 1
+    except (TypeError, ValueError):
+        return False
+
+
+def _xcpd_logical_bold_key(path: str) -> str:
+    name = Path(path).name
+    name = re.sub(r"\.(nii|nii\.gz)$", "", name)
+    name = re.sub(r"_(space|res|den|desc)-[^_]+", "", name)
+    name = re.sub(r"_bold.*$", "_bold", name)
+    return name
+
+
+def _xcpd_format_item_specs(item_specs: list[dict[str, Any]], input_format: str | None) -> list[dict[str, Any]]:
+    if input_format == "cifti":
+        return [item for item in item_specs if not _xcpd_item_is_functional_nifti(item)]
+    if input_format == "nifti":
+        return [item for item in item_specs if not _xcpd_item_is_cifti(item)]
+    return item_specs
+
+
+def _xcpd_item_is_functional_nifti(item_spec: dict[str, Any]) -> bool:
+    path_pattern = str(item_spec.get("path_pattern", ""))
+    return path_pattern.startswith("func/") and path_pattern.endswith(".nii.gz")
+
+
+def _xcpd_item_is_cifti(item_spec: dict[str, Any]) -> bool:
+    return str(item_spec.get("path_pattern", "")).endswith(
+        (".dtseries.nii", ".dscalar.nii", ".ptseries.nii", ".pconn.nii", ".pscalar.nii")
+    )
+
+
+def _xcpd_mode_item_specs(item_specs: list[dict[str, Any]], xcpd_mode: str) -> list[dict[str, Any]]:
+    selected: list[dict[str, Any]] = []
+    for item in item_specs:
+        modes = item.get("xcpd_modes")
+        if modes is None or (isinstance(modes, list) and xcpd_mode in modes):
+            selected.append(item)
+    return selected
 
 
 def _nichart_item_specs(item_specs: list[dict[str, Any]]) -> list[dict[str, Any]]:
